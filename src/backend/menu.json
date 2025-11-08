@@ -1,0 +1,135 @@
+[
+    {
+      "id": 1,
+      "name": "Cheeseburger Deluxe",
+      "description": "Juicy beef patty with melted cheese and fresh veggies.",
+      "price": 750,
+      "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 2,
+      "name": "Pasta Alfredo",
+      "description": "Creamy Alfredo sauce with parmesan and grilled chicken.",
+      "price": 820,
+      "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1232"
+    },
+    {
+      "id": 3,
+      "name": "Caesar Salad",
+      "description": "Crisp romaine lettuce with Caesar dressing and croutons.",
+      "price": 550,
+      "image": "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 4,
+      "name": "Margherita Pizza",
+      "description": "Classic pizza with fresh mozzarella, basil & tomato sauce.",
+      "price": 899,
+      "image": "https://images.unsplash.com/photo-1716237387584-09741d76502b?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687"
+    },
+    {
+      "id": 5,
+      "name": "Cheeseburger Deluxe",
+      "description": "Juicy beef patty with melted cheese and fresh veggies.",
+      "price": 750,
+      "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 6,
+      "name": "Pasta Alfredo",
+      "description": "Creamy Alfredo sauce with parmesan and grilled chicken.",
+      "price": 820,
+      "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1232"
+    },
+    {
+      "id": 7,
+      "name": "Caesar Salad",
+      "description": "Crisp romaine lettuce with Caesar dressing and croutons.",
+      "price": 550,
+      "image": "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 8,
+      "name": "Margherita Pizza",
+      "description": "Classic pizza with fresh mozzarella, basil & tomato sauce.",
+      "price": 899,
+      "image": "https://images.unsplash.com/photo-1716237387584-09741d76502b?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687"
+    },
+    {
+      "id": 9,
+      "name": "Cheeseburger Deluxe",
+      "description": "Juicy beef patty with melted cheese and fresh veggies.",
+      "price": 750,
+      "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 10,
+      "name": "Pasta Alfredo",
+      "description": "Creamy Alfredo sauce with parmesan and grilled chicken.",
+      "price": 820,
+      "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1232"
+    },
+    {
+      "id": 11,
+      "name": "Caesar Salad",
+      "description": "Crisp romaine lettuce with Caesar dressing and croutons.",
+      "price": 550,
+      "image": "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 12,
+      "name": "Margherita Pizza",
+      "description": "Classic pizza with fresh mozzarella, basil & tomato sauce.",
+      "price": 899,
+      "image": "https://images.unsplash.com/photo-1716237387584-09741d76502b?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687"
+    },
+    {
+      "id": 13,
+      "name": "Cheeseburger Deluxe",
+      "description": "Juicy beef patty with melted cheese and fresh veggies.",
+      "price": 750,
+      "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 14,
+      "name": "Pasta Alfredo",
+      "description": "Creamy Alfredo sauce with parmesan and grilled chicken.",
+      "price": 820,
+      "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1232"
+    },
+    {
+      "id": 15,
+      "name": "Caesar Salad",
+      "description": "Crisp romaine lettuce with Caesar dressing and croutons.",
+      "price": 550,
+      "image": "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 16,
+      "name": "Margherita Pizza",
+      "description": "Classic pizza with fresh mozzarella, basil & tomato sauce.",
+      "price": 899,
+      "image": "https://images.unsplash.com/photo-1716237387584-09741d76502b?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687"
+    },
+    {
+      "id": 17,
+      "name": "Cheeseburger Deluxe",
+      "description": "Juicy beef patty with melted cheese and fresh veggies.",
+      "price": 750,
+      "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=60"
+    },
+    {
+      "id": 18,
+      "name": "Pasta Alfredo",
+      "description": "Creamy Alfredo sauce with parmesan and grilled chicken.",
+      "price": 820,
+      "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1232"
+    },
+    {
+      "id": 19,
+      "name": "Caesar Salad",
+      "description": "Crisp romaine lettuce with Caesar dressing and croutons.",
+      "price": 550,
+      "image": "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=800&q=60"
+    }
+  ]
