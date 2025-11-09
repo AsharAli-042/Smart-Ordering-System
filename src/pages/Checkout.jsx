@@ -1,8 +1,10 @@
 // src/pages/Checkout.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 
 export default function Checkout() {
+  const navigate = useNavigate();
   const [specialInstructions, setSpecialInstructions] = useState("");
 
   // Example data (in a real app, this would come from context or backend)
@@ -63,11 +65,7 @@ export default function Checkout() {
         <div className="text-center">
           <button
             className="bg-[#FF4C29] hover:bg-[#E63E1F] text-white text-lg font-semibold px-10 py-3 rounded-lg shadow-md transition"
-            onClick={() =>
-              alert(
-                `Order placed!\nTotal: ₨ ${total}\nInstructions: ${specialInstructions || "None"}`
-              )
-            }
+            onClick={() => navigate("/order-placed")}
           >
             Checkout
           </button>

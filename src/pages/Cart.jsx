@@ -1,9 +1,11 @@
 // src/pages/Cart.jsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { Trash2 } from "lucide-react"; // Using lucide-react for a clean icon
 
 export default function Cart() {
+  const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
 
   // Load cart items from localStorage when the page loads
@@ -120,7 +122,9 @@ export default function Cart() {
         {/* Checkout Button */}
         {cartItems.length > 0 && (
           <div className="text-center mt-10">
-            <button className="bg-[#FF4C29] text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-[#E63E1F] transition">
+            <button
+            onClick={() => navigate("/checkout")} 
+            className="bg-[#FF4C29] text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-[#E63E1F] transition">
               Checkout (₨ {totalPrice})
             </button>
           </div>

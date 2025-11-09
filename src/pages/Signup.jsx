@@ -26,8 +26,11 @@ export default function Signup() {
       const data = await res.json();
   
       if (res.ok) {
-        alert("Signup successful!");
-        navigate("/login");
+        // alert("Signup successful!");
+        setTimeout(() => {
+          navigate("/login");; // Go to Menu Page (Home)
+        }, 2000);
+        
       } else {
         setError(data.message);
       }

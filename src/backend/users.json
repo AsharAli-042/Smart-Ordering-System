@@ -3,5 +3,20 @@
     "name": "Ashar Ali",
     "email": "advisor@gmail.com",
     "password": "123456"
+  },
+  {
+    "name": "Asad Ali",
+    "email": "asadali@gmail.com",
+    "password": "asadali123"
+  },
+  {
+    "name": "Suleman",
+    "email": "suleman@gmail.com",
+    "password": "123456789"
+  },
+  {
+    "name": "Ashar",
+    "email": "ashar@gmail.com",
+    "password": "123"
   }
 ]

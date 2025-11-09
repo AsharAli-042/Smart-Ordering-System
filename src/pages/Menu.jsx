@@ -36,7 +36,7 @@ export default function Menu() {
       localStorage.setItem("cart", JSON.stringify(updatedCart));
     }
   
-    alert(`${item.name} added to cart!`);
+    // alert(`${item.name} added to cart!`);
   };
   
 
