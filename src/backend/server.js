@@ -16,9 +16,9 @@ if (!fs.existsSync(USERS_FILE)) {
 
 // Signup Route
 app.post("/signup", (req, res) => {
-    const { name, password } = req.body;
-    if (!name || !password) {
-        return res.status(400).json({ message: "Name and password are required" });
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     const users = JSON.parse(fs.readFileSync(USERS_FILE)); 
@@ -28,8 +28,12 @@ app.post("/signup", (req, res) => {
         return res.status(400).json({ message: "User already exists" });
     }
 
+    if (users.find((u) => u.email === email)) {
+      return res.status(400).json({ message: "Email already registered" });
+  }
+
     // Save user (no hashing for simplicity)
-    users.push({ name, password });
+    users.push({ name, email, password });
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 
     res.json({ message: "Signup successful" });

@@ -50,3 +50,4 @@ export default function Navbar({ user, cartCount = 0 }) {
         </nav>
     );
 }
+

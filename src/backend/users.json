@@ -1,18 +1,7 @@
 [
   {
-    "name": "Ashar Ali Rizvi",
-    "password": "1234"
-  },
-  {
     "name": "Ashar Ali",
-    "password": "1234"
-  },
-  {
-    "name": "Asad Ali",
-    "password": "asad123"
-  },
-  {
-    "name": "Abbas",
-    "password": "123"
+    "email": "advisor@gmail.com",
+    "password": "123456"
   }
 ]
