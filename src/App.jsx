@@ -8,6 +8,7 @@ import OrderPlaced from "./pages/OrderPlaced";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminMenu from "./pages/AdminMenu";
+import RequireAdmin from "./components/RequireAdmin";
 
 export default function App() {
   return (
@@ -18,7 +19,14 @@ export default function App() {
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/order-placed" element={<OrderPlaced />} />
-      <Route path="/admin" element={<AdminDashboard />} />
+      <Route
+        path="/admin"
+        element={
+          <RequireAdmin>
+            <AdminDashboard />
+          </RequireAdmin>
+        }
+      />
       <Route path="/admin/feedback" element={<AdminFeedback />} />
       <Route path="/admin/menu" element={<AdminMenu />} />
     </Routes>

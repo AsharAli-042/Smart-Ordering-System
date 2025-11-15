@@ -82,8 +82,8 @@ app.post("/api/auth/login", async (req, res) => {
     const ok = await user.comparePassword(password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ userId: user._id, name: user.name }, JWT_SECRET, { expiresIn: "7d" });
-    res.json({ id: user._id, name: user.name, token });
+    const token = jwt.sign({ userId: user._id, name: user.name, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+    res.json({ id: user._id, name: user.name, token, role: user.role });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login failed" });

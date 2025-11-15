@@ -1,19 +1,18 @@
+// src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // { id, name, token }
+  const [user, setUser] = useState(null); // { id, name, token, role }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try load from localStorage
     const raw = localStorage.getItem("auth");
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
         setUser(parsed);
-      // eslint-disable-next-line no-unused-vars
       } catch (e) {
         localStorage.removeItem("auth");
       }
@@ -21,16 +20,14 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = ({ id, name, token }) => {
-    const u = { id, name, token };
+  const login = ({ id, name, token, role = "user" }) => {
+    const u = { id, name, token, role };
     localStorage.setItem("auth", JSON.stringify(u));
     setUser(u);
   };
 
   const logout = () => {
     localStorage.removeItem("auth");
-    // If you want to also clear cart on logout:
-    // localStorage.removeItem("cart");
     setUser(null);
   };
 
@@ -41,5 +38,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

@@ -5,8 +5,8 @@ import User from "./models/User.js"; // full path + .js
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/smart-restaurant";
 
-const ADMIN_NAME = "admin";        // change as required
-const ADMIN_PASSWORD = "admin123"; // change to a secure password before production
+const ADMIN_NAME = "ashar_admin";        // change as required
+const ADMIN_PASSWORD = "123"; // change to a secure password before production
 
 async function run() {
   try {

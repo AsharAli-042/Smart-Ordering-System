@@ -1,18 +1,18 @@
-// backend/models/User.js
-import { Schema, model } from "mongoose";
-import { compare, hash } from "bcrypt";
+// src/backend/models/User.js
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
-const UserSchema = new Schema({
-  name: { type: String, required: true, unique: true }, // user logs in with name+password
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
+  role: { type: String, enum: ["user", "admin"], default: "user" },
 }, { timestamps: true });
 
-// instance method to compare password
 UserSchema.methods.comparePassword = function (plain) {
-  return compare(plain, this.passwordHash);
+  return bcrypt.compare(plain, this.passwordHash);
 };
 
-UserSchema.statics.hashPassword = (plain) => hash(plain, 10);
+UserSchema.statics.hashPassword = (plain) => bcrypt.hash(plain, 10);
 
-const User = model("User", UserSchema);
+const User = mongoose.model("User", UserSchema);
 export default User;

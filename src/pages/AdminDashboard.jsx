@@ -1,5 +1,8 @@
 // src/pages/AdminDashboard.jsx
 // import Navbar from "../components/Navbar";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import AdminNavbar from "../components/AdminNavbar";
 import { 
   TrendingUp, 
@@ -29,6 +32,30 @@ import {
 } from "recharts";
 
 export default function AdminDashboard() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // while loading keep quiet
+    if (loading) return;
+
+    if (!user) {
+      // not logged in → send to login
+      navigate("/login");
+      return;
+    }
+
+    if (user.role !== "admin") {
+      // logged in but not admin → redirect to home or show forbidden
+      navigate("/");
+      return;
+    }
+  }, [user, loading, navigate]);
+
+  if (loading || !user || user.role !== "admin") {
+    return null; // or show spinner / "checking" text
+  }
+
   // Temporary placeholder values
   const totalOrdersToday = 57;
   const bestSellingItem = "Margherita Pizza";
