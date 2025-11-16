@@ -11,6 +11,7 @@ import Order from "./models/Order.js";
 import Feedback from "./models/Feedback.js";
 
 
+
 const app = express();
 app.use(cors(
   {origin:  "http://localhost:5173"}
@@ -247,6 +248,51 @@ app.post("/api/feedback", softAuth, async (req, res) => {
     return res.status(500).json({ message: "Failed to submit feedback" });
   }
 });
+
+// GET /api/admin/stats
+// Protected: admin only
+app.get("/api/admin/stats", authMiddleware, async (req, res) => {
+  try {
+    // only admins allowed
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfToday.getDate() - 6); // last 7 days (including today)
+
+    // total orders today
+    const totalOrdersToday = await Order.countDocuments({
+      placedAt: { $gte: startOfToday }
+    });
+
+    // revenue today
+    const revenueTodayAgg = await Order.aggregate([
+      { $match: { placedAt: { $gte: startOfToday } } },
+      { $group: { _id: null, sum: { $sum: "$total" } } }
+    ]);
+    const revenueToday = (revenueTodayAgg[0] && revenueTodayAgg[0].sum) || 0;
+
+    // weekly revenue (last 7 days)
+    const revenueWeekAgg = await Order.aggregate([
+      { $match: { placedAt: { $gte: startOfWeek } } },
+      { $group: { _id: null, sum: { $sum: "$total" } } }
+    ]);
+    const revenueWeek = (revenueWeekAgg[0] && revenueWeekAgg[0].sum) || 0;
+
+    return res.json({
+      totalOrdersToday,
+      revenueToday,
+      revenueWeek
+    });
+  } catch (err) {
+    console.error("GET /api/admin/stats error:", err);
+    return res.status(500).json({ message: "Failed to compute stats" });
+  }
+});
+
 
 
 /* ----------------

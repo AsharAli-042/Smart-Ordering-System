@@ -1,14 +1,12 @@
 // src/pages/AdminDashboard.jsx
-// import Navbar from "../components/Navbar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import AdminNavbar from "../components/AdminNavbar";
-import { 
-  TrendingUp, 
-  ShoppingBag, 
-  DollarSign, 
-  Users, 
+import {
+  TrendingUp,
+  ShoppingBag,
+  DollarSign,
   Clock,
   Star,
   ChefHat,
@@ -27,7 +25,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from "recharts";
 
@@ -35,38 +32,15 @@ export default function AdminDashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // while loading keep quiet
-    if (loading) return;
+  // KPI states (default to 0 so UI never shows blank)
+  const [totalOrdersToday, setTotalOrdersToday] = useState(0);
+  const [revenueToday, setRevenueToday] = useState(0);
+  const [revenueWeek, setRevenueWeek] = useState(0);
 
-    if (!user) {
-      // not logged in → send to login
-      navigate("/login");
-      return;
-    }
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
 
-    if (user.role !== "admin") {
-      // logged in but not admin → redirect to home or show forbidden
-      navigate("/");
-      return;
-    }
-  }, [user, loading, navigate]);
-
-  if (loading || !user || user.role !== "admin") {
-    return null; // or show spinner / "checking" text
-  }
-
-  // Temporary placeholder values
-  const totalOrdersToday = 57;
-  const bestSellingItem = "Margherita Pizza";
-  const revenueToday = 34250;
-  const revenueWeek = 178300;
-  const activeCustomers = 234;
-  const avgOrderValue = 601;
-  const pendingOrders = 8;
-  const completedOrders = 49;
-
-  // Sample data for charts
+  // sample static chart data (unchanged)
   const weeklyRevenueData = [
     { day: "Mon", revenue: 25400, orders: 42 },
     { day: "Tue", revenue: 28900, orders: 48 },
@@ -106,23 +80,73 @@ export default function AdminDashboard() {
     { hour: "8 PM", orders: 48 }
   ];
 
+  useEffect(() => {
+    // Basic guard: if auth loaded and not admin, send to login
+    if (!loading) {
+      if (!user || user.role !== "admin") {
+        navigate("/login");
+        return;
+      }
+    }
+
+    // Fetch stats (only if user exists)
+    const fetchStats = async () => {
+      setStatsLoading(true);
+      setStatsError("");
+      try {
+        const headers = { "Content-Type": "application/json" };
+        // attach Authorization only if token exists and non-empty
+        if (user && user.token) headers["Authorization"] = `Bearer ${user.token}`;
+
+        const res = await fetch("/api/admin/stats", { headers });
+
+        if (!res.ok) {
+          const errorBody = await res.json().catch(() => ({}));
+          const msg = errorBody.message || `Error ${res.status}`;
+          throw new Error(msg);
+        }
+
+        const data = await res.json();
+
+        // Defensive assignments (ensure numbers)
+        setTotalOrdersToday(Number(data.totalOrdersToday || 0));
+        setRevenueToday(Number(data.revenueToday || 0));
+        setRevenueWeek(Number(data.revenueWeek || 0));
+      } catch (err) {
+        console.error("Failed to fetch admin stats:", err);
+        setStatsError(err.message || "Failed to load stats");
+        // keep KPI values as 0 as fallback
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    if (user) fetchStats();
+  }, [user, loading, navigate]);
+
+  // Safe display helper
+  const showNumber = (val, isCurrency = false) => {
+    if (statsLoading) return <span className="text-gray-400">Loading...</span>;
+    if (isCurrency) return `₨ ${Number(val || 0).toLocaleString()}`;
+    return Number(val || 0);
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-orange-50 via-amber-50 to-orange-100">
       <AdminNavbar />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-        {/* Header Section */}
+        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                Admin Dashboard
-              </h1>
+              <h1 className="text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
               <p className="text-gray-600 flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Last updated: {new Date().toLocaleString()}
               </p>
             </div>
+
             <div className="bg-linear-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
               <span className="font-semibold">Live Analytics</span>
@@ -130,8 +154,16 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Main KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Error banner (visible if statsError) */}
+        {statsError && (
+          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
+            <strong>Error loading stats:</strong> {statsError}
+            <div className="text-sm mt-1">Check backend `/api/admin/stats` and that the admin token is valid.</div>
+          </div>
+        )}
+
+        {/* KPI Cards (3 columns now) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Total Orders Today */}
           <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-orange-100">
             <div className="flex items-center justify-between mb-4">
@@ -143,15 +175,8 @@ export default function AdminDashboard() {
                 12%
               </div>
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">
-              Total Orders Today
-            </h3>
-            <p className="text-3xl font-bold text-gray-800">
-              {totalOrdersToday}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              {pendingOrders} pending • {completedOrders} completed
-            </p>
+            <h3 className="text-gray-600 text-sm font-medium mb-1">Total Orders Today</h3>
+            <p className="text-3xl font-bold text-gray-800">{showNumber(totalOrdersToday)}</p>
           </div>
 
           {/* Revenue Today */}
@@ -165,36 +190,10 @@ export default function AdminDashboard() {
                 8%
               </div>
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">
-              Revenue Today
-            </h3>
-            <p className="text-3xl font-bold text-gray-800">
-              ₨ {revenueToday.toLocaleString()}
-            </p>
+            <h3 className="text-gray-600 text-sm font-medium mb-1">Revenue Today</h3>
+            <p className="text-3xl font-bold text-gray-800">{showNumber(revenueToday, true)}</p>
             <p className="text-xs text-gray-500 mt-2">
-              Avg. order: ₨ {avgOrderValue}
-            </p>
-          </div>
-
-          {/* Active Customers */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-orange-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-linear-to-br from-blue-100 to-blue-200 p-3 rounded-xl">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="flex items-center gap-1 text-green-600 text-sm font-semibold">
-                <ArrowUp className="w-4 h-4" />
-                15%
-              </div>
-            </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">
-              Active Customers
-            </h3>
-            <p className="text-3xl font-bold text-gray-800">
-              {activeCustomers}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              This week
+              Avg. order: {statsLoading ? "—" : (totalOrdersToday ? `₨ ${Math.round(revenueToday / Math.max(1, totalOrdersToday)).toLocaleString()}` : "—")}
             </p>
           </div>
 
@@ -209,15 +208,9 @@ export default function AdminDashboard() {
                 3%
               </div>
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">
-              Weekly Revenue
-            </h3>
-            <p className="text-3xl font-bold text-gray-800">
-              ₨ {revenueWeek.toLocaleString()}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              Last 7 days
-            </p>
+            <h3 className="text-gray-600 text-sm font-medium mb-1">Weekly Revenue</h3>
+            <p className="text-3xl font-bold text-gray-800">{showNumber(revenueWeek, true)}</p>
+            <p className="text-xs text-gray-500 mt-2">Last 7 days</p>
           </div>
         </div>
 
