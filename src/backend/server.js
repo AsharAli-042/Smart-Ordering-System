@@ -397,6 +397,149 @@ app.get("/api/admin/top-selling", authMiddleware, async (req, res) => {
   }
 });
 
+// --- GET /api/admin/feedback ---
+// Returns list of feedbacks (most recent first). Admin-only.
+app.get("/api/admin/feedback", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    // fetch feedbacks, populate user (optional) and orderId (if you want)
+    const feedbacks = await Feedback.find({})
+      .sort({ createdAt: -1 })
+      .populate({ path: "userId", select: "name" }) // optional: show user name when available
+      .lean();
+
+    // normalize response to front-end friendly shape
+    const out = feedbacks.map(f => ({
+      id: f._id,
+      userId: f.userId?._id ?? null,
+      customerName: f.userId?.name ?? (f.guestName || "Guest"),
+      orderId: f.orderId ? String(f.orderId) : (f.orderNumber || "N/A"),
+      rating: f.rating,
+      message: f.message,
+      response: f.response || "",
+      responseAt: f.responseAt || null,
+      createdAt: f.createdAt || f.createdAt
+    }));
+
+    return res.json(out);
+  } catch (err) {
+    console.error("GET /api/admin/feedback error:", err);
+    return res.status(500).json({ message: "Failed to load feedbacks" });
+  }
+});
+
+// --- POST /api/admin/feedback/:id/respond ---
+// Admin posts a response to a feedback item.
+app.post("/api/admin/feedback/:id/respond", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    const { id } = req.params;
+    const { response = "" } = req.body || {};
+
+    if (!id) return res.status(400).json({ message: "Missing feedback id" });
+
+    const update = {
+      response: String(response).trim(),
+      responseAt: response ? new Date() : null
+    };
+
+    const updated = await Feedback.findByIdAndUpdate(id, update, { new: true }).lean();
+    if (!updated) return res.status(404).json({ message: "Feedback not found" });
+
+    return res.json({
+      id: updated._id,
+      response: updated.response || "",
+      responseAt: updated.responseAt || null,
+      message: "Response saved"
+    });
+  } catch (err) {
+    console.error("POST /api/admin/feedback/:id/respond error:", err);
+    return res.status(500).json({ message: "Failed to save response" });
+  }
+});
+
+// GET all menu items (admin)
+app.get("/api/admin/menu", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    const items = await MenuItem.find({}).sort({ createdAt: -1 }).lean();
+    return res.json(items);
+  } catch (err) {
+    console.error("GET /api/admin/menu error:", err);
+    return res.status(500).json({ message: "Failed to load menu items" });
+  }
+});
+
+// POST create menu item (admin)
+app.post("/api/admin/menu", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    const { name, price, description = "", image = "" } = req.body || {};
+    if (!name || typeof price === "undefined" || price === null) {
+      return res.status(400).json({ message: "Missing required fields: name and price" });
+    }
+
+    const item = await MenuItem.create({
+      name: String(name).trim(),
+      price: Number(price),
+      description: String(description).trim(),
+      image: String(image).trim(),
+    });
+
+    return res.status(201).json(item);
+  } catch (err) {
+    console.error("POST /api/admin/menu error:", err);
+    return res.status(500).json({ message: "Failed to create menu item" });
+  }
+});
+
+// PUT update menu item (admin)
+app.put("/api/admin/menu/:id", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    const { id } = req.params;
+    const { name, price, description, image } = req.body || {};
+
+    if (!id) return res.status(400).json({ message: "Missing item id" });
+
+    const update = {};
+    if (typeof name !== "undefined") update.name = String(name).trim();
+    if (typeof price !== "undefined") update.price = Number(price);
+    if (typeof description !== "undefined") update.description = String(description).trim();
+    if (typeof image !== "undefined") update.image = String(image).trim();
+
+    const updated = await MenuItem.findByIdAndUpdate(id, update, { new: true }).lean();
+    if (!updated) return res.status(404).json({ message: "Menu item not found" });
+
+    return res.json(updated);
+  } catch (err) {
+    console.error("PUT /api/admin/menu/:id error:", err);
+    return res.status(500).json({ message: "Failed to update menu item" });
+  }
+});
+
+// DELETE menu item (admin)
+app.delete("/api/admin/menu/:id", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: "Missing item id" });
+
+    const removed = await MenuItem.findByIdAndDelete(id).lean();
+    if (!removed) return res.status(404).json({ message: "Menu item not found" });
+
+    return res.json({ id: removed._id, message: "Deleted" });
+  } catch (err) {
+    console.error("DELETE /api/admin/menu/:id error:", err);
+    return res.status(500).json({ message: "Failed to delete menu item" });
+  }
+});
 
 /* ----------------
    Start server
