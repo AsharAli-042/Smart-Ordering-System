@@ -1,6 +1,11 @@
 import { Routes, Route } from "react-router-dom";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+
+import StaffLoginSelect from "./pages/StaffLoginSelect";
+import AdminLogin from "./pages/AdminLogin";
+import KitchenLogin from "./pages/KitchenLogin";
+
 import Menu from "./pages/Menu";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
@@ -17,6 +22,11 @@ export default function App() {
       <Route path="/" element={<Menu />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
+
+      <Route path="/staff-login" element={<StaffLoginSelect />} />
+<Route path="/admin-login" element={<AdminLogin />} />
+<Route path="/kitchen-login" element={<KitchenLogin />} />
+
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/order-placed" element={<OrderPlaced />} />

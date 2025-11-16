@@ -1,6 +1,6 @@
 // src/pages/Login.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -35,12 +35,16 @@ export default function Login() {
 
       // Enforce strict mode -> role mapping:
       if (mode === "admin" && role !== "admin") {
-        setError("Provided credentials are not for an admin. Use 'Login as User' or create an admin account.");
+        setError(
+          "Provided credentials are not for an admin. Use 'Login as User' or create an admin account."
+        );
         return;
       }
 
       if (mode === "user" && role === "admin") {
-        setError("This account is an admin. Please select 'Login as Admin' to continue.");
+        setError(
+          "This account is an admin. Please select 'Login as Admin' to continue."
+        );
         return;
       }
 
@@ -50,7 +54,6 @@ export default function Login() {
       // Redirect depending on role
       if (role === "admin") navigate("/admin");
       else navigate("/");
-
     } catch (err) {
       setError("Login failed. Try again.");
     }
@@ -61,14 +64,18 @@ export default function Login() {
       <Navbar />
       <div className="flex justify-center items-center pt-24">
         <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-md">
-          <h2 className="text-2xl font-bold text-center text-[#2E2E2E] mb-6">Login</h2>
+          <h2 className="text-2xl font-bold text-center text-[#2E2E2E] mb-6">
+            Login
+          </h2>
 
           {/* Mode toggle */}
           <div className="flex items-center justify-center mb-6">
             <button
               onClick={() => setMode("user")}
               className={`px-4 py-2 rounded-l-2xl border ${
-                mode === "user" ? "bg-[#FF4C29] text-white border-[#FF4C29]" : "bg-white text-gray-700"
+                mode === "user"
+                  ? "bg-[#FF4C29] text-white border-[#FF4C29]"
+                  : "bg-white text-gray-700"
               }`}
             >
               Login as User
@@ -76,18 +83,24 @@ export default function Login() {
             <button
               onClick={() => setMode("admin")}
               className={`px-4 py-2 rounded-r-2xl border ${
-                mode === "admin" ? "bg-[#FF4C29] text-white border-[#FF4C29]" : "bg-white text-gray-700"
+                mode === "admin"
+                  ? "bg-[#FF4C29] text-white border-[#FF4C29]"
+                  : "bg-white text-gray-700"
               }`}
             >
               Login as Admin
             </button>
           </div>
 
-          {error && <p className="text-red-500 text-center mb-4 font-medium">{error}</p>}
+          {error && (
+            <p className="text-red-500 text-center mb-4 font-medium">{error}</p>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-gray-700 font-medium mb-2">Name</label>
+              <label className="block text-gray-700 font-medium mb-2">
+                Name
+              </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -96,7 +109,9 @@ export default function Login() {
               />
             </div>
             <div>
-              <label className="block text-gray-700 font-medium mb-2">Password</label>
+              <label className="block text-gray-700 font-medium mb-2">
+                Password
+              </label>
               <input
                 type="password"
                 value={password}
@@ -111,6 +126,25 @@ export default function Login() {
             >
               Login
             </button>
+            <p className="text-center text-sm text-gray-600 mt-4">
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                className="text-[#FF4C29] font-medium hover:underline"
+              >
+                Sign Up
+              </Link>
+            </p>
+
+            {/* NEW BUTTON FOR STAFF LOGIN */}
+            <div className="text-center mt-6">
+              <Link
+                to="/staff-login"
+                className="text-[#FF4C29] font-medium hover:underline"
+              >
+                Login as Staff (Admin / Kitchen)
+              </Link>
+            </div>
           </form>
         </div>
       </div>
