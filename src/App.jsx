@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminMenu from "./pages/AdminMenu";
 import RequireAdmin from "./components/RequireAdmin";
+import KitchenPanel from "./pages/KitchenPanel";
 
 export default function App() {
   return (
@@ -27,8 +28,23 @@ export default function App() {
           </RequireAdmin>
         }
       />
-      <Route path="/admin/feedback" element={<AdminFeedback />} />
-      <Route path="/admin/menu" element={<AdminMenu />} />
+      <Route
+        path="/admin/feedback"
+        element={
+          <RequireAdmin>
+            <AdminFeedback />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/admin/menu"
+        element={
+          <RequireAdmin>
+            <AdminMenu />
+          </RequireAdmin>
+        }
+      />
+      <Route path="/kitchen" element={<KitchenPanel />}/>
     </Routes>
   );
 }
