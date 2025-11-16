@@ -28,33 +28,6 @@ export default function AdminFeedback() {
       customerName: "Sara Ali",
       itemOrdered: "Beef Burger Combo"
     },
-    {
-      id: 3,
-      rating: 3,
-      comment: "Average. Pasta was too creamy for my taste. Portion size was good but could use less cream sauce.",
-      orderId: "ORD-1019",
-      date: "2025-02-17",
-      customerName: "Usman Ahmed",
-      itemOrdered: "Pasta Alfredo"
-    },
-    {
-      id: 4,
-      rating: 5,
-      comment: "Exceptional! Best biryani I've had in months. Perfectly cooked rice and tender chicken. Fast delivery too!",
-      orderId: "ORD-1041",
-      date: "2025-02-17",
-      customerName: "Fatima Hassan",
-      itemOrdered: "Chicken Biryani"
-    },
-    {
-      id: 5,
-      rating: 2,
-      comment: "Disappointing experience. The salad was not fresh and some vegetables were wilted. Expected better quality.",
-      orderId: "ORD-1008",
-      date: "2025-02-16",
-      customerName: "Ali Raza",
-      itemOrdered: "Caesar Salad"
-    },
   ];
 
   // Calculate stats

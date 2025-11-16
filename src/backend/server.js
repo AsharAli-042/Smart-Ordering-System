@@ -10,7 +10,24 @@ import Cart from "./models/Cart.js";
 import Order from "./models/Order.js";
 import Feedback from "./models/Feedback.js";
 
+const TZ_NAME = process.env.TZ_NAME || "Asia/Karachi";          // Olson timezone name
+const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS || 5); // numeric offset fallback (if needed)
 
+/**
+ * Compute UTC Date that represents the start-of-day (00:00) in the target timezone.
+ * daysAgo = 0 -> today, 1 -> yesterday, etc.
+ */
+function startOfDayInUTC(offsetHours = TZ_OFFSET_HOURS, daysAgo = 0) {
+  const now = new Date();
+  const offsetMs = offsetHours * 60 * 60 * 1000;
+  // local time in target tz as Date object
+  const localNow = new Date(now.getTime() + offsetMs);
+  // local midnight
+  const localMidnight = new Date(localNow.getFullYear(), localNow.getMonth(), localNow.getDate() - daysAgo);
+  // convert local midnight back to UTC time
+  const startUtc = new Date(localMidnight.getTime() - offsetMs);
+  return startUtc;
+}
 
 const app = express();
 app.use(cors(
@@ -253,39 +270,37 @@ app.post("/api/feedback", softAuth, async (req, res) => {
 // Protected: admin only
 app.get("/api/admin/stats", authMiddleware, async (req, res) => {
   try {
-    // only admins allowed
     if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(startOfToday);
-    startOfWeek.setDate(startOfToday.getDate() - 6); // last 7 days (including today)
+    // compute UTC boundaries that correspond to midnight in your timezone
+    const startOfTodayUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 0);
+    const startOfWeekUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 6); // last 7 days including today
 
-    // total orders today
+    // total orders today (placedAt >= local-midnight)
     const totalOrdersToday = await Order.countDocuments({
-      placedAt: { $gte: startOfToday }
+      placedAt: { $gte: startOfTodayUTC },
     });
 
-    // revenue today
+    // revenue today (sum total for orders placed today)
     const revenueTodayAgg = await Order.aggregate([
-      { $match: { placedAt: { $gte: startOfToday } } },
-      { $group: { _id: null, sum: { $sum: "$total" } } }
+      { $match: { placedAt: { $gte: startOfTodayUTC } } },
+      { $group: { _id: null, sum: { $sum: "$total" } } },
     ]);
     const revenueToday = (revenueTodayAgg[0] && revenueTodayAgg[0].sum) || 0;
 
-    // weekly revenue (last 7 days)
+    // weekly revenue (last 7 days from local midnight)
     const revenueWeekAgg = await Order.aggregate([
-      { $match: { placedAt: { $gte: startOfWeek } } },
-      { $group: { _id: null, sum: { $sum: "$total" } } }
+      { $match: { placedAt: { $gte: startOfWeekUTC } } },
+      { $group: { _id: null, sum: { $sum: "$total" } } },
     ]);
     const revenueWeek = (revenueWeekAgg[0] && revenueWeekAgg[0].sum) || 0;
 
     return res.json({
       totalOrdersToday,
       revenueToday,
-      revenueWeek
+      revenueWeek,
     });
   } catch (err) {
     console.error("GET /api/admin/stats error:", err);
@@ -293,6 +308,94 @@ app.get("/api/admin/stats", authMiddleware, async (req, res) => {
   }
 });
 
+// --- ADD TO server.js ---
+// GET /api/admin/weekly-revenue
+app.get("/api/admin/weekly-revenue", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    const startOfTodayUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 0);
+    const startOfWeekUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 6);
+
+    const agg = await Order.aggregate([
+      { $match: { placedAt: { $gte: startOfWeekUTC } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$placedAt", timezone: TZ_NAME } },
+          revenue: { $sum: "$total" },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const result = agg.map(a => ({ date: a._id, revenue: a.revenue || 0, orders: a.orders || 0 }));
+    return res.json(result);
+  } catch (err) {
+    console.error("GET /api/admin/weekly-revenue error:", err);
+    return res.status(500).json({ message: "Failed to compute weekly revenue" });
+  }
+});
+
+// GET /api/admin/peak-hours
+app.get("/api/admin/peak-hours", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    const startOfWeekUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 6);
+
+    const agg = await Order.aggregate([
+      { $match: { placedAt: { $gte: startOfWeekUTC } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%H", date: "$placedAt", timezone: TZ_NAME } }, // hour 00-23 in TZ
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const result = agg.map(a => ({ hour: Number(a._id), orders: a.orders || 0 }));
+    return res.json(result);
+  } catch (err) {
+    console.error("GET /api/admin/peak-hours error:", err);
+    return res.status(500).json({ message: "Failed to compute peak hours" });
+  }
+});
+
+// GET /api/admin/top-selling
+app.get("/api/admin/top-selling", authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+    // Unwind items and group by item name (fallback to menuItemId if name missing)
+    const agg = await Order.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: { $ifNull: ["$items.name", "$items.menuItemId"] },
+          sales: { $sum: { $ifNull: ["$items.quantity", 1] } },
+          revenue: {
+            $sum: {
+              $multiply: [
+                { $ifNull: ["$items.quantity", 1] },
+                { $ifNull: ["$items.price", 0] }
+              ]
+            }
+          }
+        }
+      },
+      { $sort: { sales: -1 } },
+      { $limit: 10 }
+    ]);
+
+    const result = agg.map(a => ({ name: String(a._id), sales: a.sales || 0, revenue: a.revenue || 0 }));
+    return res.json(result);
+  } catch (err) {
+    console.error("GET /api/admin/top-selling error:", err);
+    return res.status(500).json({ message: "Failed to compute top selling items" });
+  }
+});
 
 
 /* ----------------

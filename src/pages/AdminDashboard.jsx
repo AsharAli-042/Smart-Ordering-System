@@ -11,21 +11,18 @@ import {
   Star,
   ChefHat,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
 } from "lucide-react";
 import {
   LineChart,
   Line,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from "recharts";
 
 export default function AdminDashboard() {
@@ -40,48 +37,88 @@ export default function AdminDashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState("");
 
-  // sample static chart data (unchanged)
-  const weeklyRevenueData = [
-    { day: "Mon", revenue: 25400, orders: 42 },
-    { day: "Tue", revenue: 28900, orders: 48 },
-    { day: "Wed", revenue: 22100, orders: 37 },
-    { day: "Thu", revenue: 31200, orders: 52 },
-    { day: "Fri", revenue: 35800, orders: 61 },
-    { day: "Sat", revenue: 42300, orders: 71 },
-    { day: "Sun", revenue: 38200, orders: 64 }
-  ];
+  // Chart data states
+  const [weeklyRevenueData, setWeeklyRevenueData] = useState([]);
+  const [topSellingItems, setTopSellingItems] = useState([]);
+  const [peakHoursData, setPeakHoursData] = useState([]);
+  const [chartsLoading, setChartsLoading] = useState(true);
 
-  const topSellingItems = [
-    { name: "Margherita Pizza", sales: 145, revenue: 72500 },
-    { name: "Chicken Biryani", sales: 132, revenue: 66000 },
-    { name: "Beef Burger", sales: 98, revenue: 44100 },
-    { name: "Pasta Alfredo", sales: 87, revenue: 39150 },
-    { name: "Caesar Salad", sales: 76, revenue: 30400 }
-  ];
-
-  const orderStatusData = [
-    { name: "Completed", value: 49, color: "#10B981" },
-    { name: "Pending", value: 8, color: "#F59E0B" },
-    { name: "Cancelled", value: 3, color: "#EF4444" }
-  ];
-
-  const peakHoursData = [
-    { hour: "9 AM", orders: 5 },
-    { hour: "10 AM", orders: 12 },
-    { hour: "11 AM", orders: 18 },
-    { hour: "12 PM", orders: 32 },
-    { hour: "1 PM", orders: 45 },
-    { hour: "2 PM", orders: 38 },
-    { hour: "3 PM", orders: 22 },
-    { hour: "4 PM", orders: 15 },
-    { hour: "5 PM", orders: 28 },
-    { hour: "6 PM", orders: 41 },
-    { hour: "7 PM", orders: 52 },
-    { hour: "8 PM", orders: 48 }
-  ];
-
+  // Fetch charts data
   useEffect(() => {
-    // Basic guard: if auth loaded and not admin, send to login
+    if (!user) return;
+
+    const fetchCharts = async () => {
+      setChartsLoading(true);
+      try {
+        const headers = {
+          "Content-Type": "application/json",
+          ...(user && user.token
+            ? { Authorization: `Bearer ${user.token}` }
+            : {}),
+        };
+
+        const [weeklyRes, peakRes, topRes] = await Promise.all([
+          fetch("http://localhost:5000/api/admin/weekly-revenue", { headers }),
+          fetch("http://localhost:5000/api/admin/peak-hours", { headers }),
+          fetch("http://localhost:5000/api/admin/top-selling", { headers }),
+        ]);
+
+        if (!weeklyRes.ok || !peakRes.ok || !topRes.ok) {
+          const errText = `Charts fetch failed: ${weeklyRes.status}, ${peakRes.status}, ${topRes.status}`;
+          throw new Error(errText);
+        }
+
+        const weeklyRaw = await weeklyRes.json();
+        const peakRaw = await peakRes.json();
+        const topRaw = await topRes.json();
+
+        // Normalize weekly data
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const iso = d.toISOString().slice(0, 10);
+          days.push({
+            iso,
+            label: d.toLocaleString("en-US", { weekday: "short" }),
+          });
+        }
+        const weeklyMap = Object.fromEntries(weeklyRaw.map((w) => [w.date, w]));
+        const weeklyNormalized = days.map((d) => {
+          const entry = weeklyMap[d.iso];
+          return {
+            day: d.label,
+            revenue: entry ? Number(entry.revenue || 0) : 0,
+            orders: entry ? Number(entry.orders || 0) : 0,
+          };
+        });
+
+        // Normalize peak hours
+        const peakNormalized = Array.from({ length: 24 }, (_, h) => {
+          const found = peakRaw.find((p) => p.hour === h);
+          const label = (() => {
+            const hour = h % 12 === 0 ? 12 : h % 12;
+            const suffix = h < 12 ? "AM" : "PM";
+            return `${hour} ${suffix}`;
+          })();
+          return { hour: label, orders: found ? found.orders : 0, rawHour: h };
+        });
+
+        setWeeklyRevenueData(weeklyNormalized);
+        setPeakHoursData(peakNormalized);
+        setTopSellingItems(topRaw);
+      } catch (err) {
+        console.error("Failed to fetch charts:", err);
+      } finally {
+        setChartsLoading(false);
+      }
+    };
+
+    fetchCharts();
+  }, [user]);
+
+  // Fetch stats
+  useEffect(() => {
     if (!loading) {
       if (!user || user.role !== "admin") {
         navigate("/login");
@@ -89,14 +126,13 @@ export default function AdminDashboard() {
       }
     }
 
-    // Fetch stats (only if user exists)
     const fetchStats = async () => {
       setStatsLoading(true);
       setStatsError("");
       try {
         const headers = { "Content-Type": "application/json" };
-        // attach Authorization only if token exists and non-empty
-        if (user && user.token) headers["Authorization"] = `Bearer ${user.token}`;
+        if (user && user.token)
+          headers["Authorization"] = `Bearer ${user.token}`;
 
         const res = await fetch("/api/admin/stats", { headers });
 
@@ -108,14 +144,12 @@ export default function AdminDashboard() {
 
         const data = await res.json();
 
-        // Defensive assignments (ensure numbers)
         setTotalOrdersToday(Number(data.totalOrdersToday || 0));
         setRevenueToday(Number(data.revenueToday || 0));
         setRevenueWeek(Number(data.revenueWeek || 0));
       } catch (err) {
         console.error("Failed to fetch admin stats:", err);
         setStatsError(err.message || "Failed to load stats");
-        // keep KPI values as 0 as fallback
       } finally {
         setStatsLoading(false);
       }
@@ -138,9 +172,11 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
+              <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                Admin Dashboard
+              </h1>
               <p className="text-gray-600 flex items-center gap-2">
                 <Clock className="w-4 h-4" />
                 Last updated: {new Date().toLocaleString()}
@@ -154,15 +190,17 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Error banner (visible if statsError) */}
+        {/* Error banner */}
         {statsError && (
-          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
+          <div className="mb-6 p-4 rounded-xl bg-red-50 border-2 border-red-200 text-red-700">
             <strong>Error loading stats:</strong> {statsError}
-            <div className="text-sm mt-1">Check backend `/api/admin/stats` and that the admin token is valid.</div>
+            <div className="text-sm mt-1">
+              Check backend `/api/admin/stats` and that the admin token is valid.
+            </div>
           </div>
         )}
 
-        {/* KPI Cards (3 columns now) */}
+        {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Total Orders Today */}
           <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-orange-100">
@@ -175,8 +213,12 @@ export default function AdminDashboard() {
                 12%
               </div>
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">Total Orders Today</h3>
-            <p className="text-3xl font-bold text-gray-800">{showNumber(totalOrdersToday)}</p>
+            <h3 className="text-gray-600 text-sm font-medium mb-1">
+              Total Orders Today
+            </h3>
+            <p className="text-3xl font-bold text-gray-800">
+              {showNumber(totalOrdersToday)}
+            </p>
           </div>
 
           {/* Revenue Today */}
@@ -190,10 +232,21 @@ export default function AdminDashboard() {
                 8%
               </div>
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">Revenue Today</h3>
-            <p className="text-3xl font-bold text-gray-800">{showNumber(revenueToday, true)}</p>
+            <h3 className="text-gray-600 text-sm font-medium mb-1">
+              Revenue Today
+            </h3>
+            <p className="text-3xl font-bold text-gray-800">
+              {showNumber(revenueToday, true)}
+            </p>
             <p className="text-xs text-gray-500 mt-2">
-              Avg. order: {statsLoading ? "—" : (totalOrdersToday ? `₨ ${Math.round(revenueToday / Math.max(1, totalOrdersToday)).toLocaleString()}` : "—")}
+              Avg. order:{" "}
+              {statsLoading
+                ? "—"
+                : totalOrdersToday
+                ? `₨ ${Math.round(
+                    revenueToday / Math.max(1, totalOrdersToday)
+                  ).toLocaleString()}`
+                : "—"}
             </p>
           </div>
 
@@ -208,8 +261,12 @@ export default function AdminDashboard() {
                 3%
               </div>
             </div>
-            <h3 className="text-gray-600 text-sm font-medium mb-1">Weekly Revenue</h3>
-            <p className="text-3xl font-bold text-gray-800">{showNumber(revenueWeek, true)}</p>
+            <h3 className="text-gray-600 text-sm font-medium mb-1">
+              Weekly Revenue
+            </h3>
+            <p className="text-3xl font-bold text-gray-800">
+              {showNumber(revenueWeek, true)}
+            </p>
             <p className="text-xs text-gray-500 mt-2">Last 7 days</p>
           </div>
         </div>
@@ -219,58 +276,85 @@ export default function AdminDashboard() {
           {/* Weekly Revenue Chart */}
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6 border border-orange-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Weekly Revenue Trend</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                Weekly Revenue Trend
+              </h2>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                 <span>Revenue</span>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={weeklyRevenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="day" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#FF4C29" 
-                  strokeWidth={3}
-                  dot={{ fill: '#FF4C29', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+
+            {chartsLoading ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">Loading chart...</p>
+              </div>
+            ) : weeklyRevenueData.length === 0 ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">No revenue data available</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={weeklyRevenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="day" stroke="#666" />
+                  <YAxis stroke="#666" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#FF4C29"
+                    strokeWidth={3}
+                    dot={{ fill: "#FF4C29", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
-          {/* Order Status Pie Chart */}
+          {/* Busiest Hours Overview */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-orange-100">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">Order Status</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={orderStatusData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={90}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {orderStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+            <div className="flex items-center gap-2 mb-6">
+              <ChefHat className="w-6 h-6 text-orange-500" />
+              <h2 className="text-xl font-bold text-gray-800">
+                Busiest Hours Today
+              </h2>
+            </div>
+            
+            {chartsLoading ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">Loading...</p>
+              </div>
+            ) : peakHoursData.length === 0 ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">No data available</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {peakHoursData
+                  .filter(p => p.orders > 0)
+                  .sort((a, b) => b.orders - a.orders)
+                  .slice(0, 9)
+                  .map((p, i) => (
+                    <div
+                      key={i}
+                      className="p-3 bg-linear-to-br from-orange-50 to-orange-100 rounded-xl text-center hover:shadow-md transition-shadow"
+                    >
+                      <div className="font-bold text-gray-800">{p.hour}</div>
+                      <div className="text-sm text-orange-600 font-semibold">
+                        {p.orders} orders
+                      </div>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </div>
 
@@ -280,59 +364,86 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-orange-100">
             <div className="flex items-center gap-2 mb-6">
               <Star className="w-6 h-6 text-orange-500" />
-              <h2 className="text-xl font-bold text-gray-800">Top Selling Items</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                Top Selling Items
+              </h2>
             </div>
-            <div className="space-y-4">
-              {topSellingItems.map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-linear-to-r from-orange-50 to-transparent rounded-xl hover:from-orange-100 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-linear-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-bold">
-                      {index + 1}
+
+            {chartsLoading ? (
+              <div className="py-8 text-center">
+                <p className="text-gray-400">Loading top items...</p>
+              </div>
+            ) : topSellingItems.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-gray-400">No items sold yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {topSellingItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 bg-linear-to-r from-orange-50 to-transparent rounded-xl hover:from-orange-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-linear-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-bold">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          {item.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {item.sales} orders
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-800">{item.name}</p>
-                      <p className="text-sm text-gray-500">{item.sales} orders</p>
+                    <div className="text-right">
+                      <p className="font-bold text-orange-600">
+                        ₨ {Number(item.revenue || 0).toLocaleString()}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-orange-600">₨ {item.revenue.toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Peak Hours Chart */}
+          {/* Peak Hours Bar Chart */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-orange-100">
-            <div className="flex items-center gap-2 mb-6">
-              <ChefHat className="w-6 h-6 text-orange-500" />
-              <h2 className="text-xl font-bold text-gray-800">Peak Hours</h2>
-            </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={peakHoursData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="hour" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar 
-                  dataKey="orders" 
-                  fill="url(#colorGradient)" 
-                  radius={[8, 8, 0, 0]}
-                />
-                <defs>
-                  <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FF4C29" />
-                    <stop offset="100%" stopColor="#FFA41B" />
-                  </linearGradient>
-                </defs>
-              </BarChart>
-            </ResponsiveContainer>
+            <h2 className="text-xl font-bold text-gray-800 mb-6">
+              Peak Hours
+            </h2>
+            
+            {chartsLoading ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">Loading...</p>
+              </div>
+            ) : peakHoursData.length === 0 ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-400">No peak hours data</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={peakHoursData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="hour"
+                    stroke="#666"
+                    interval={Math.max(0, Math.floor(peakHoursData.length / 8))}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis stroke="#666" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Bar dataKey="orders" fill="#FF4C29" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
