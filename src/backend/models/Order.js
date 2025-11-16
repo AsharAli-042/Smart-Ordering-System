@@ -16,9 +16,11 @@ const OrderSchema = new mongoose.Schema({
   additionalCharges: { type: Number, default: 0 },
   total: { type: Number, required: true },
   specialInstructions: { type: String, default: "" },
+  // NEW: table number where the user is seated (string to allow "A1", "12", etc.)
+  tableNumber: { type: String, required: false, default: "" },
   status: { type: String, default: "placed" }, // placed, preparing, ready, delivered, cancelled...
   placedAt: { type: Date, default: () => new Date() },
-  meta: { type: Object, default: {} }, // free-form (tableNo, phone, etc.)
+  meta: { type: Object, default: {} }, // free-form (phone, etc.)
 }, { timestamps: true });
 
 // You can add indexes if needed

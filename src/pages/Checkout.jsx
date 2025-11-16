@@ -1,21 +1,36 @@
 // src/pages/Checkout.jsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { items: cartItems, totalPrice: subTotal, clearCart } = useCart();
+
+  // Get tableNumber passed from Cart page (required). If missing, redirect back to cart.
+  const tableNumberFromState = location?.state?.tableNumber || "";
+  const [tableNumber] = useState(String(tableNumberFromState || "").trim()); // read-only
+
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Example additional charge (service / tax); you can compute dynamically if needed
+  // Example additional charge (service / tax)
   const additionalCharges = 150;
   const total = (subTotal || 0) + additionalCharges;
+
+  // If user reached this page without tableNumber, force them back to Cart.
+  useEffect(() => {
+    if (!tableNumber) {
+      // if cart has items but no tableNumber passed, send back to cart so they can enter it
+      navigate("/cart");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCheckout = async () => {
     setError("");
@@ -24,21 +39,27 @@ export default function Checkout() {
       return;
     }
 
+    if (!tableNumber || String(tableNumber).trim() === "") {
+      // safety: redirect back to cart
+      setError("Table number missing. Please set your table number in the cart.");
+      navigate("/cart");
+      return;
+    }
+
     setLoading(true);
 
-    // Build payload
+    // Build payload (include tableNumber top-level)
     const payload = {
       items: cartItems,
       subtotal: subTotal,
       additionalCharges,
       total,
       specialInstructions,
-      placedAt: new Date().toISOString(),
-      // if you want guest info you could include e.g. tableNo or phone here
+      tableNumber, // <-- required and sent to server
+      // placedAt: new Date().toISOString(), // optional; server will set if not provided
     };
 
     try {
-      // Send order to backend (backend should accept guest orders or require auth based on your design)
       const orderRes = await fetch("http://localhost:5000/api/orders", {
         method: "POST",
         headers: {
@@ -48,21 +69,19 @@ export default function Checkout() {
         body: JSON.stringify(payload),
       });
 
-      // If backend returns orderId, capture it
       let orderData = {};
       try {
         orderData = await orderRes.json();
       } catch (e) {
-        // ignore parse errors, handle below
+        // ignore parse errors
       }
 
       if (!orderRes.ok) {
-        // backend error: show message if provided
         const msg = orderData?.message || "Failed to place order. Please try again.";
         throw new Error(msg);
       }
 
-      // Save a small lastOrder object so OrderPlaced page can read it
+      // Save lastOrder including tableNumber so OrderPlaced page can show it
       const lastOrder = {
         orderId: orderData?.orderId || null,
         items: cartItems,
@@ -70,19 +89,19 @@ export default function Checkout() {
         additionalCharges,
         total,
         specialInstructions,
+        tableNumber,
         placedAt: new Date().toISOString(),
       };
       localStorage.setItem("lastOrder", JSON.stringify(lastOrder));
 
-      // If user is logged in, clear server-side cart (optional, backend should also handle this via order creation)
+      // Clear server-side cart if user is logged in (best-effort)
       if (user && user.token) {
         try {
-          await fetch("/api/cart", {
+          await fetch("http://localhost:5000/api/cart", {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${user.token}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${user.token}` },
           });
         } catch (err) {
-          // ignore clearing error — frontend cart will be cleared anyway
           console.warn("Failed to clear server cart:", err);
         }
       }
@@ -125,6 +144,19 @@ export default function Checkout() {
           <div className="flex justify-between text-[#FF4C29] text-xl font-bold">
             <span>Total</span>
             <span>₨ {total}</span>
+          </div>
+
+          {/* Table number (read-only) */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Table Number</label>
+            <input
+              type="text"
+              value={tableNumber}
+              readOnly
+              disabled
+              className="w-full max-w-sm px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
+            />
+            <p className="text-xs text-gray-500 mt-2">To change table number go back to Cart.</p>
           </div>
         </div>
 

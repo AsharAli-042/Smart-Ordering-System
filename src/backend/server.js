@@ -186,6 +186,7 @@ const softAuth = async (req, res, next) => {
  *
  * If Authorization header present and valid, order.userId will be set.
  */
+// POST /api/orders
 app.post("/api/orders", softAuth, async (req, res) => {
   try {
     const {
@@ -195,6 +196,8 @@ app.post("/api/orders", softAuth, async (req, res) => {
       total,
       specialInstructions = "",
       meta = {},
+      tableNumber: rawTableNumber,
+      placedAt: rawPlacedAt
     } = req.body || {};
 
     // Basic validation
@@ -205,6 +208,19 @@ app.post("/api/orders", softAuth, async (req, res) => {
       return res.status(400).json({ message: "Subtotal and total must be numbers." });
     }
 
+    // Table number is required (either as top-level property or inside meta.tableNumber)
+    const tableNumberCandidate =
+      (typeof rawTableNumber !== "undefined" && rawTableNumber !== null ? String(rawTableNumber) : "")
+      || (meta && meta.tableNumber ? String(meta.tableNumber) : "");
+
+    if (!tableNumberCandidate || !tableNumberCandidate.trim()) {
+      return res.status(400).json({ message: "tableNumber is required." });
+    }
+    const tableNumber = tableNumberCandidate.trim();
+
+    // placedAt: accept client-provided ISO string, otherwise use server time
+    const placedAt = rawPlacedAt ? new Date(rawPlacedAt) : new Date();
+
     const orderDoc = await Order.create({
       userId: req.user?.userId || null,
       items,
@@ -212,9 +228,10 @@ app.post("/api/orders", softAuth, async (req, res) => {
       additionalCharges,
       total,
       specialInstructions,
-      placedAt: new Date(),
+      placedAt,
       meta,
       status: "placed",
+      tableNumber,
     });
 
     // If a logged-in user placed the order, clear their server-side cart (optional but common)
@@ -233,6 +250,7 @@ app.post("/api/orders", softAuth, async (req, res) => {
     return res.status(500).json({ message: "Failed to place order" });
   }
 });
+
 
 /**
  * POST /api/feedback
