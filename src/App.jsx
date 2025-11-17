@@ -15,6 +15,7 @@ import AdminFeedback from "./pages/AdminFeedback";
 import AdminMenu from "./pages/AdminMenu";
 import RequireAdmin from "./components/RequireAdmin";
 import KitchenPanel from "./pages/KitchenPanel";
+import RequireChef from "./components/RequireChef";
 
 export default function App() {
   return (
@@ -24,8 +25,8 @@ export default function App() {
       <Route path="/login" element={<Login />} />
 
       <Route path="/staff-login" element={<StaffLoginSelect />} />
-<Route path="/admin-login" element={<AdminLogin />} />
-<Route path="/kitchen-login" element={<KitchenLogin />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/kitchen-login" element={<KitchenLogin />} />
 
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<Checkout />} />
@@ -54,7 +55,14 @@ export default function App() {
           </RequireAdmin>
         }
       />
-      <Route path="/kitchen" element={<KitchenPanel />}/>
+      <Route
+        path="/kitchen"
+        element={
+          <RequireChef>
+            <KitchenPanel />
+          </RequireChef>
+        }
+      />
     </Routes>
   );
 }

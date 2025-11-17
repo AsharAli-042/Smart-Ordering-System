@@ -1,16 +1,17 @@
-// src/components/RequireAdmin.jsx
+// src/components/RequireChef.jsx
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 
-export default function RequireAdmin({ children }) {
+export default function RequireChef({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
+  // while the auth status is loading, render nothing (or a spinner)
   if (loading) return null;
 
   const role = (user?.role || "").toLowerCase();
-  if (user && role === "admin") {
+  if (user && (role === "chef" || role === "admin")) {
     return children;
   }
 

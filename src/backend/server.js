@@ -559,6 +559,62 @@ app.delete("/api/admin/menu/:id", authMiddleware, async (req, res) => {
   }
 });
 
+// ---------- GET /api/kitchen/orders (allow only chef or admin) ----------
+app.get("/api/kitchen/orders", authMiddleware, async (req, res) => {
+  try {
+    const role = (req.user?.role || "").toLowerCase();
+    if (!req.user || !["chef", "admin"].includes(role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const orders = await Order.find({}).sort({ placedAt: -1 }).lean();
+
+    const out = orders.map((o) => ({
+      id: o._id,
+      items: (o.items || []).map(it => ({
+        menuItemId: it.menuItemId || null,
+        name: it.name || (it.menuItem?.name ?? "Item"),
+        qty: it.quantity || it.qty || 1,
+      })),
+      table: o.tableNumber || (o.meta && o.meta.tableNumber) || "",
+      status: o.status || "placed",
+      placedAt: o.placedAt || o.createdAt || null,
+      subtotal: o.subtotal || 0,
+      total: o.total || 0,
+    }));
+
+    return res.json(out);
+  } catch (err) {
+    console.error("GET /api/kitchen/orders error:", err);
+    return res.status(500).json({ message: "Failed to load orders" });
+  }
+});
+
+// ---------- PATCH /api/kitchen/orders/:id/status (allow only chef or admin) ----------
+app.patch("/api/kitchen/orders/:id/status", authMiddleware, async (req, res) => {
+  try {
+    const role = (req.user?.role || "").toLowerCase();
+    if (!req.user || !["chef", "admin"].includes(role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { id } = req.params;
+    const { status } = req.body || {};
+    if (!id) return res.status(400).json({ message: "Missing order id" });
+    if (!status || typeof status !== "string") return res.status(400).json({ message: "Missing or invalid status" });
+
+    const newStatus = String(status).trim();
+
+    const updated = await Order.findByIdAndUpdate(id, { status: newStatus }, { new: true }).lean();
+    if (!updated) return res.status(404).json({ message: "Order not found" });
+
+    return res.json({ id: updated._id, status: updated.status, message: "Status updated" });
+  } catch (err) {
+    console.error("PATCH /api/kitchen/orders/:id/status error:", err);
+    return res.status(500).json({ message: "Failed to update status" });
+  }
+});
+
 /* ----------------
    Start server
    ---------------- */

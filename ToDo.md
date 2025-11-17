@@ -14,3 +14,7 @@
 1. Fix the Navbar.
 2. Connect User Checkout to the Kitchen Panel
 3. Seperate Order Placed Page and Feedback page.
+
+# Admin
+
+1. Fix the time for KPI boxes and Graphs/Charts
