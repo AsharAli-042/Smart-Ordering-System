@@ -251,6 +251,27 @@ app.post("/api/orders", softAuth, async (req, res) => {
   }
 });
 
+app.get("/api/orders/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: "Missing order id" });
+
+    // quick validation for ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid order id" });
+    }
+
+    const order = await Order.findById(id).lean();
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    // return order document (lean returns plain object)
+    return res.json(order);
+  } catch (err) {
+    console.error("GET /api/orders/:id error:", err);
+    return res.status(500).json({ message: "Failed to fetch order" });
+  }
+});
+
 
 /**
  * POST /api/feedback

@@ -10,6 +10,7 @@ import Menu from "./pages/Menu";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderPlaced from "./pages/OrderPlaced";
+import Feedback from "./pages/Feedback";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminMenu from "./pages/AdminMenu";
@@ -31,6 +32,7 @@ export default function App() {
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/order-placed" element={<OrderPlaced />} />
+      <Route path="/feedback" element={<Feedback />} />
       <Route
         path="/admin"
         element={
