@@ -1,6 +1,6 @@
 // src/pages/Checkout.jsx
 import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
@@ -11,13 +11,37 @@ export default function Checkout() {
   const { user } = useAuth();
   const { items: cartItems, totalPrice: subTotal, clearCart } = useCart();
 
-  // Get tableNumber passed from Cart page (required). If missing, redirect back to cart.
-  const tableNumberFromState = location?.state?.tableNumber || "";
+  // read tableNumber from location.state (preferred) or pendingTableNumber in localStorage (if user returned after login)
+  const tableNumberFromState =
+    (location && location.state && location.state.tableNumber) ||
+    localStorage.getItem("pendingTableNumber") ||
+    "";
   const [tableNumber] = useState(String(tableNumberFromState || "").trim()); // read-only
 
-  const [specialInstructions, setSpecialInstructions] = useState("");
+  // const [specialInstructions, setSpecialInstructions] = useState("");
+
+  const [specialInstructions, setSpecialInstructions] = useState(() => {
+    return localStorage.getItem("pendingSpecialInstructions") || "";
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // When guest wants to checkout -> save cart & tableNumber so we can restore after login
+  const savePendingAndRedirectToLogin = () => {
+    try {
+      localStorage.setItem("pendingCart", JSON.stringify(cartItems || []));
+      localStorage.setItem("pendingTableNumber", String(tableNumber || ""));
+      localStorage.setItem(
+        "pendingSpecialInstructions",
+        String(specialInstructions || "")
+      );
+    } catch (e) {
+      console.warn("Failed to save pending cart:", e);
+    }
+    // send current location so Login can redirect back
+    navigate("/login", { state: { from: location } });
+  };
 
   // Example additional charge (service / tax)
   const additionalCharges = 150;
@@ -34,29 +58,36 @@ export default function Checkout() {
 
   const handleCheckout = async () => {
     setError("");
+
+    // must be logged-in user to place order
+    if (!user || !user.token) {
+      // send user to login — pass the current location so they return to checkout after login
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     if (!cartItems || cartItems.length === 0) {
       setError("Your cart is empty.");
       return;
     }
 
     if (!tableNumber || String(tableNumber).trim() === "") {
-      // safety: redirect back to cart
-      setError("Table number missing. Please set your table number in the cart.");
+      setError(
+        "Table number missing. Please set your table number in the cart."
+      );
       navigate("/cart");
       return;
     }
 
     setLoading(true);
 
-    // Build payload (include tableNumber top-level)
     const payload = {
       items: cartItems,
       subtotal: subTotal,
       additionalCharges,
       total,
       specialInstructions,
-      tableNumber, // <-- required and sent to server
-      // placedAt: new Date().toISOString(), // optional; server will set if not provided
+      tableNumber,
     };
 
     try {
@@ -64,7 +95,9 @@ export default function Checkout() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(user && user.token ? { Authorization: `Bearer ${user.token}` } : {}),
+          ...(user && user.token
+            ? { Authorization: `Bearer ${user.token}` }
+            : {}),
         },
         body: JSON.stringify(payload),
       });
@@ -72,16 +105,14 @@ export default function Checkout() {
       let orderData = {};
       try {
         orderData = await orderRes.json();
-      } catch (e) {
-        // ignore parse errors
-      }
+      } catch (e) {}
 
       if (!orderRes.ok) {
-        const msg = orderData?.message || "Failed to place order. Please try again.";
+        const msg =
+          orderData?.message || "Failed to place order. Please try again.";
         throw new Error(msg);
       }
 
-      // Save lastOrder including tableNumber so OrderPlaced page can show it
       const lastOrder = {
         orderId: orderData?.orderId || null,
         items: cartItems,
@@ -94,19 +125,30 @@ export default function Checkout() {
       };
       localStorage.setItem("lastOrder", JSON.stringify(lastOrder));
 
-      // Clear server-side cart if user is logged in (best-effort)
-      if (user && user.token) {
-        try {
+      try {
+        localStorage.removeItem("pendingCart");
+        localStorage.removeItem("pendingTableNumber");
+        localStorage.removeItem("pendingSpecialInstructions");
+      } catch (e) {}
+
+      clearCart();
+      navigate("/order-placed");
+
+      // Clear server-side cart (best-effort)
+      try {
+        if (user && user.token) {
           await fetch("http://localhost:5000/api/cart", {
             method: "DELETE",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${user.token}` },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${user.token}`,
+            },
           });
-        } catch (err) {
-          console.warn("Failed to clear server cart:", err);
         }
+      } catch (err) {
+        console.warn("Failed to clear server cart:", err);
       }
 
-      // Clear client-side cart & navigate to confirmation
       clearCart();
       navigate("/order-placed");
     } catch (err) {
@@ -123,7 +165,9 @@ export default function Checkout() {
 
       <div className="max-w-4xl mx-auto px-6 pt-24 pb-16">
         {/* Header */}
-        <h1 className="text-4xl font-bold text-center text-[#2E2E2E] mb-10">CHECKOUT</h1>
+        <h1 className="text-4xl font-bold text-center text-[#2E2E2E] mb-10">
+          CHECKOUT
+        </h1>
 
         {/* Order Summary Box */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
@@ -148,7 +192,9 @@ export default function Checkout() {
 
           {/* Table number (read-only) */}
           <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Table Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Table Number
+            </label>
             <input
               type="text"
               value={tableNumber}
@@ -156,18 +202,28 @@ export default function Checkout() {
               disabled
               className="w-full max-w-sm px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
             />
-            <p className="text-xs text-gray-500 mt-2">To change table number go back to Cart.</p>
+            <p className="text-xs text-gray-500 mt-2">
+              To change table number go back to Cart.
+            </p>
           </div>
         </div>
 
         {/* Special Instructions Box */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-semibold text-[#2E2E2E] mb-4">Special Instructions</h2>
+          <h2 className="text-2xl font-semibold text-[#2E2E2E] mb-4">
+            Special Instructions
+          </h2>
 
           <textarea
             rows="4"
             value={specialInstructions}
-            onChange={(e) => setSpecialInstructions(e.target.value)}
+            onChange={(e) => {
+              setSpecialInstructions(e.target.value);
+              localStorage.setItem(
+                "pendingSpecialInstructions",
+                e.target.value
+              );
+            }}
             placeholder="Add Cooking Instructions"
             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#FF4C29] text-gray-700 resize-none"
           />
@@ -176,15 +232,29 @@ export default function Checkout() {
         {/* Error */}
         {error && <p className="text-center text-red-500 mb-4">{error}</p>}
 
-        {/* Checkout Button */}
+        {/* Checkout / Login CTA */}
         <div className="text-center">
-          <button
-            className="bg-[#FF4C29] hover:bg-[#E63E1F] text-white text-lg font-semibold px-10 py-3 rounded-lg shadow-md transition disabled:opacity-60 disabled:cursor-not-allowed"
-            onClick={handleCheckout}
-            disabled={loading}
-          >
-            {loading ? "Placing order..." : `Checkout (₨ ${total})`}
-          </button>
+          {user && user.token ? (
+            <button
+              className="bg-[#FF4C29] hover:bg-[#E63E1F] text-white text-lg font-semibold px-10 py-3 rounded-lg shadow-md transition disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={handleCheckout}
+              disabled={loading}
+            >
+              {loading ? "Placing order..." : `Checkout (₨ ${total})`}
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-center text-gray-600">
+                You must be logged in to place an order.
+              </p>
+              <button
+                onClick={savePendingAndRedirectToLogin}
+                className="bg-[#FF4C29] text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-[#E63E1F] transition"
+              >
+                Login to place order
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
