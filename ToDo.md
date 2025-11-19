@@ -8,8 +8,6 @@
 
 1. Fix the Navbar.
 2. Add another field of email in the database. [Medium Prio]
-3. No User should be able to access OrderPlaced page unless they just placed an order. 
-4. They should also not be able to access the feedback page. That should only be accessible from the User page. Also a User cannot place more than 1 feedback.
 
 # Menu
 

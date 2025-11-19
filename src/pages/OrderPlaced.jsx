@@ -1,4 +1,3 @@
-// src/pages/OrderPlaced.jsx
 import { useEffect, useState, useRef } from "react";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +12,11 @@ export default function OrderPlaced() {
   const [orderLoading, setOrderLoading] = useState(true);
   const [orderError, setOrderError] = useState("");
   const pollRef = useRef(null);
+
+  // Feedback-related states
+  const [feedbackChecked, setFeedbackChecked] = useState(false); // whether we've checked if feedback exists
+  const [feedbackExists, setFeedbackExists] = useState(false);   // whether feedback already submitted
+  const [showCompletedModal, setShowCompletedModal] = useState(false); // local modal shown once when completed
 
   // helper to format times in Pakistan timezone
   const fmt = (iso) => {
@@ -40,7 +44,7 @@ export default function OrderPlaced() {
     return idx >= 0 ? idx : STATUS_STEPS.length - 1;
   };
 
-  // load lastOrder from localStorage on mount
+  // --- load lastOrder from localStorage on mount; if not present, redirect out ---
   useEffect(() => {
     try {
       const raw = localStorage.getItem("lastOrder");
@@ -50,6 +54,11 @@ export default function OrderPlaced() {
         return;
       }
       const obj = JSON.parse(raw);
+      // basic sanity: must at least have orderId
+      if (!obj?.orderId) {
+        navigate("/");
+        return;
+      }
       setLastOrder(obj);
       setOrderLoading(false);
     } catch (err) {
@@ -58,6 +67,53 @@ export default function OrderPlaced() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // --- helper: check if feedback exists for this order (server for logged-in, local for guests) ---
+  const checkFeedbackExistence = async (orderId) => {
+    setFeedbackChecked(false);
+    setFeedbackExists(false);
+    if (!orderId) {
+      setFeedbackChecked(true);
+      return;
+    }
+
+    // First, check guest local storage (fast fallback)
+    try {
+      const localGuest = JSON.parse(localStorage.getItem("guestFeedbacks") || "[]");
+      if (Array.isArray(localGuest) && localGuest.find((f) => String(f.orderId) === String(orderId))) {
+        setFeedbackExists(true);
+        setFeedbackChecked(true);
+        return;
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+
+    // If logged-in, call server endpoint to check if this user submitted feedback
+    if (user && user.token) {
+      try {
+        const res = await fetch(`http://localhost:5000/api/feedback/check/${orderId}`, {
+          headers: { Authorization: `Bearer ${user.token}`, "Content-Type": "application/json" },
+        });
+        if (res.ok) {
+          const j = await res.json();
+          setFeedbackExists(Boolean(j.exists));
+        } else {
+          // treat non-ok as "no feedback" (we don't want to block user due to transient server error)
+          setFeedbackExists(false);
+        }
+      } catch (e) {
+        // network error -> assume not submitted (frontend won't allow double-submission server-side)
+        setFeedbackExists(false);
+      } finally {
+        setFeedbackChecked(true);
+      }
+    } else {
+      // guest and no local feedback found
+      setFeedbackExists(false);
+      setFeedbackChecked(true);
+    }
+  };
 
   // fetch single order from backend (if orderId exists)
   const fetchOrder = async (orderId) => {
@@ -75,7 +131,6 @@ export default function OrderPlaced() {
       if (res.status === 404) {
         setOrderError("Order not found (it may have been removed).");
         setOrderLoading(false);
-        // stop polling if pollRef exists
         if (pollRef.current) {
           clearInterval(pollRef.current);
           pollRef.current = null;
@@ -88,26 +143,30 @@ export default function OrderPlaced() {
         try {
           body = await res.json();
         } catch {}
-        throw new Error(
-          body.message || `Failed to fetch order (${res.status})`
-        );
+        throw new Error(body.message || `Failed to fetch order (${res.status})`);
       }
 
       const data = await res.json();
+
+      // If user is logged in, ensure this order belongs to them (safety)
+      if (user && user.id && data.userId && String(data.userId) !== String(user.id)) {
+        setOrderError("You are not authorized to view this order.");
+        setOrderLoading(false);
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+        return;
+      }
 
       const normalized = {
         orderId: data._id || data.id || orderId,
         status: (data.status || data.state || "").toString().toLowerCase(),
         items: Array.isArray(data.items) ? data.items : lastOrder?.items || [],
         subtotal: data.subtotal ?? lastOrder?.subtotal ?? 0,
-        additionalCharges:
-          data.additionalCharges ?? lastOrder?.additionalCharges ?? 0,
+        additionalCharges: data.additionalCharges ?? lastOrder?.additionalCharges ?? 0,
         total: data.total ?? lastOrder?.total ?? 0,
-        placedAt:
-          data.placedAt ||
-          data.createdAt ||
-          lastOrder?.placedAt ||
-          new Date().toISOString(),
+        placedAt: data.placedAt || data.createdAt || lastOrder?.placedAt || new Date().toISOString(),
         tableNumber:
           (data.meta && data.meta.tableNo) ||
           data.tableNumber ||
@@ -115,7 +174,28 @@ export default function OrderPlaced() {
           lastOrder?.tableNo,
       };
 
-      setLastOrder((prev) => ({ ...prev, ...normalized }));
+      // update lastOrder locally and in localStorage (keep them in sync)
+      setLastOrder((prev) => {
+        const merged = { ...(prev || {}), ...normalized };
+        try { localStorage.setItem("lastOrder", JSON.stringify(merged)); } catch {}
+        return merged;
+      });
+
+      // If order is completed and we haven't checked feedback yet, check it
+      const st = normalized.status;
+      if (st === "completed" || st === "delivered") {
+        // trigger modal once per order (local)
+        const notifiedKey = `notifiedFor:${normalized.orderId}`;
+        if (!localStorage.getItem(notifiedKey)) {
+          setShowCompletedModal(true);
+          try { localStorage.setItem(notifiedKey, "1"); } catch {}
+        }
+        // now check feedback state for this order
+        checkFeedbackExistence(normalized.orderId);
+      } else {
+        // reset feedback check if order reverted (unlikely)
+        setFeedbackChecked(false);
+      }
     } catch (err) {
       console.error("Order fetch error:", err);
       setOrderError(err.message || "Failed to load order");
@@ -142,15 +222,53 @@ export default function OrderPlaced() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastOrder?.orderId, user?.token]);
 
+  // when lastOrder initially loaded, if it's already completed then ensure we check feedback
+  useEffect(() => {
+    if (!lastOrder?.orderId) return;
+    const st = (lastOrder?.status || "").toString().toLowerCase();
+    if (st === "completed" || st === "delivered") {
+      checkFeedbackExistence(lastOrder.orderId);
+      const notifiedKey = `notifiedFor:${lastOrder.orderId}`;
+      if (!localStorage.getItem(notifiedKey)) {
+        setShowCompletedModal(true);
+        try { localStorage.setItem(notifiedKey, "1"); } catch {}
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastOrder?.orderId]);
+
+  // navigate helpers
   const handleBrowseMenu = () => navigate("/");
 
+  // The "Give Feedback" click handler:
   const handleGoToFeedback = () => {
-    // navigate to feedback page and pass the orderId via state (also feedback page can read localStorage.lastOrder)
-    navigate("/feedback", { state: { orderId: lastOrder.orderId } });
+    if (!lastOrder?.orderId) return;
+    // prevent going if feedback already exists (safety)
+    if (feedbackExists) {
+      // optional: show an alert or toast
+      alert("Feedback for this order has already been submitted.");
+      return;
+    }
+
+    // only allow feedback if order is completed
+    const st = (lastOrder?.status || "").toLowerCase();
+    if (!(st === "completed" || st === "delivered")) {
+      alert("Feedback is available only after the order is completed.");
+      return;
+    }
+
+    // if user logged in -> go to feedback page directly
+    if (user && user.token) {
+      navigate("/feedback", { state: { orderId: lastOrder.orderId } });
+      return;
+    }
+
+    // NOT logged in: send to login and include redirect instruction so after login user can be returned to feedback
+    // NOTE: Your Login page must handle `location.state?.redirectTo` or `location.state` to perform the post-login redirect.
+    navigate("/login", { state: { redirectTo: "/feedback", orderId: lastOrder.orderId } });
   };
 
   const currentStatusIndex = getStatusIndex(lastOrder?.status);
-
   return (
     <div className="min-h-screen bg-[#FFF5EE]">
       <Navbar />

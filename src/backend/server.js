@@ -67,6 +67,8 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+const auth = authMiddleware;
+
 /* ----------------
    Auth routes
    ---------------- */
@@ -187,7 +189,7 @@ const softAuth = async (req, res, next) => {
  * If Authorization header present and valid, order.userId will be set.
  */
 // POST /api/orders
-app.post("/api/orders", softAuth, async (req, res) => {
+app.post("/api/orders", authMiddleware, async (req, res) => {
   try {
     const {
       items = [],
@@ -251,26 +253,35 @@ app.post("/api/orders", softAuth, async (req, res) => {
   }
 });
 
-app.get("/api/orders/:id", async (req, res) => {
+// GET /api/orders/:orderId — requires auth
+app.get("/api/orders/:orderId", authMiddleware, async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ message: "Missing order id" });
-
-    // quick validation for ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid order id" });
-    }
-
-    const order = await Order.findById(id).lean();
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId).lean();
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // return order document (lean returns plain object)
-    return res.json(order);
+    // ensure ownership: order.userId must equal req.user.userId
+    if (order.userId && String(order.userId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: "Not authorized to view this order" });
+    }
+
+    // return order minimal fields (avoid leaking)
+    return res.json({
+      _id: order._id,
+      userId: order.userId,
+      status: order.status,
+      items: order.items,
+      subtotal: order.subtotal,
+      total: order.total,
+      placedAt: order.placedAt,
+      meta: order.meta,
+    });
   } catch (err) {
-    console.error("GET /api/orders/:id error:", err);
+    console.error("GET /api/orders/:orderId error:", err);
     return res.status(500).json({ message: "Failed to fetch order" });
   }
 });
+
 
 
 /**
@@ -282,28 +293,66 @@ app.get("/api/orders/:id", async (req, res) => {
  *   placedAt?: string
  * }
  */
-app.post("/api/feedback", softAuth, async (req, res) => {
+// POST /api/feedback
+// Require authentication for server-side feedback (prevents multiple guest abuse).
+// If you want guests to be allowed server-side, you can change this to softAuth and add additional checks.
+app.post("/api/feedback", auth, async (req, res) => {
   try {
-    const { orderId = null, rating = 0, message = "" } = req.body || {};
+    const userId = req.user?.userId;
+    const { orderId, rating, message } = req.body || {};
 
-    if (typeof rating !== "number" || rating < 0 || rating > 5) {
-      return res.status(400).json({ message: "Rating must be a number between 0 and 5." });
+    if (!orderId || typeof rating === "undefined") {
+      return res.status(400).json({ message: "orderId and rating are required." });
     }
 
-    const feedbackDoc = await Feedback.create({
-      userId: req.user?.userId || null,
+    // validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid orderId." });
+    }
+
+    // fetch order
+    const order = await Order.findById(orderId).lean();
+    if (!order) return res.status(404).json({ message: "Order not found." });
+
+    // only allow feedback for completed/delivered orders
+    const status = (order.status || "").toString().toLowerCase();
+    if (!(status === "completed" || status === "delivered")) {
+      return res.status(400).json({ message: "Feedback allowed only after order is completed." });
+    }
+
+    // ensure this user hasn't already left feedback for this order
+    const existing = await Feedback.findOne({ orderId, userId });
+    if (existing) {
+      return res.status(400).json({ message: "You have already submitted feedback for this order." });
+    }
+
+    const fb = await Feedback.create({
+      userId,
       orderId,
-      rating,
-      message,
-      createdAt: new Date(),
+      rating: Number(rating),
+      message: message || "",
     });
 
-    return res.status(201).json({ feedbackId: feedbackDoc._id, message: "Thanks for your feedback!" });
+    return res.status(201).json({ message: "Feedback submitted.", feedbackId: fb._id });
   } catch (err) {
     console.error("POST /api/feedback error:", err);
     return res.status(500).json({ message: "Failed to submit feedback" });
   }
 });
+
+// GET /api/feedback/check/:orderId - tells if current logged-in user already submitted feedback for that order
+app.get("/api/feedback/check/:orderId", authMiddleware, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    // server-side: find feedback by orderId and optionally by userId
+    const found = await Feedback.findOne({ orderId, userId: req.user.userId }).lean();
+    return res.json({ exists: Boolean(found) });
+  } catch (err) {
+    console.error("GET /api/feedback/check/:orderId", err);
+    return res.status(500).json({ message: "Failed to check feedback" });
+  }
+});
+
 
 // GET /api/admin/stats
 // Protected: admin only
