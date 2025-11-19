@@ -93,9 +93,17 @@ export default function Login() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#FF4C29]"
               />
             </div>
-            <button type="submit" className="w-full bg-[#FF4C29] text-white py-2 rounded-lg font-semibold hover:bg-[#E63E1F] transition">
-              Login
-            </button>
+
+            <div className="flex items-center justify-between">
+              <button type="submit" className="w-auto bg-[#FF4C29] text-white py-2 px-6 rounded-lg font-semibold hover:bg-[#E63E1F] transition">
+                Login
+              </button>
+
+              {/* FORGOT PASSWORD */}
+              <Link to="/forgot-password" className="text-sm text-[#FF4C29] hover:underline">
+                Forgot your password?
+              </Link>
+            </div>
 
             <p className="text-center text-sm text-gray-600 mt-4">
               Don't have an account?{" "}

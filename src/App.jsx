@@ -2,6 +2,9 @@ import { Routes, Route } from "react-router-dom";
 import Signup from "./pages/Signup";
 
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
 import StaffLoginSelect from "./pages/StaffLoginSelect";
 import AdminLogin from "./pages/AdminLogin";
 import KitchenLogin from "./pages/KitchenLogin";
@@ -31,6 +34,9 @@ export default function App() {
         <Route path="/" element={<Menu />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
+        
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route path="/staff-login" element={<StaffLoginSelect />} />
         <Route path="/admin-login" element={<AdminLogin />} />
