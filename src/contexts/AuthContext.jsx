@@ -26,9 +26,24 @@ export const AuthProvider = ({ children }) => {
     setUser(u);
   };
 
-  const logout = () => {
-    localStorage.removeItem("auth");
+  // Example inside AuthContext (update to match your file)
+  const logout = async () => {
+    try {
+      // optionally call server logout endpoint here if desired
+    } catch (e) {}
+    // clear context state
     setUser(null);
+    setToken(null);
+    // clear localStorage keys used across app
+    try {
+      localStorage.removeItem("auth");
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      localStorage.removeItem("cart");
+      localStorage.removeItem("pendingCart");
+      localStorage.removeItem("pendingTable");
+      localStorage.removeItem("lastOrder");
+    } catch (e) {}
   };
 
   return (

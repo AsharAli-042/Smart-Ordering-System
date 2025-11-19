@@ -15,61 +15,35 @@ export default function KitchenNavbar() {
   const handleLogout = async () => {
     setOpenDropdown(false);
 
-    // Try server logout if token exists (best-effort)
-    let token = user?.token || null;
-    if (!token) {
-      try {
-        const raw = localStorage.getItem("auth");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          token = parsed?.token || token;
-        }
-      } catch (e) {}
-      if (!token) {
-        const rawUser = localStorage.getItem("user");
-        try {
-          if (rawUser) {
-            const parsedUser = JSON.parse(rawUser);
-            token = parsedUser?.token || token;
-          }
-        } catch (e) {}
-      }
-      if (!token) {
-        token = localStorage.getItem("token") || null;
-      }
-    }
-
+    // try server-side logout (best effort)
+    const token = user?.token || localStorage.getItem("token") || null;
     if (token) {
       try {
         await fetch("http://localhost:5000/api/auth/logout", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });
       } catch (err) {
-        // ignore server logout errors
         console.warn("Server logout failed (ignored):", err);
       }
     }
 
-    // Clear client side auth storage (common keys)
+    // Use AuthContext logout (canonical)
+    try {
+      await logout?.();
+    } catch (e) {
+      console.warn("AuthContext.logout threw:", e);
+    }
+
+    // Clear common local storage keys as a fallback
     try {
       localStorage.removeItem("auth");
       localStorage.removeItem("user");
       localStorage.removeItem("token");
     } catch (e) {}
 
-    // Call context logout (if implemented)
-    try {
-      logout && logout();
-    } catch (e) {
-      console.warn("AuthContext.logout threw:", e);
-    }
-
-    // navigate to login (kitchen login or main login)
-    navigate("/login");
+    // replace navigation so "back" doesn't let user get to protected pages
+    navigate("/login", { replace: true });
   };
 
   return (

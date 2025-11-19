@@ -1,9 +1,9 @@
 // src/pages/Cart.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCart } from "../contexts/CartContext";
 import Navbar from "../components/Navbar";
 import { Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -14,6 +14,13 @@ export default function Cart() {
 
   // Simple validation helper
   const handleCheckoutClick = () => {
+
+    if (!user || !user.role !== "user" || !user.token) {
+      // send user to login — pass the current location so they return to checkout after login
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     if (cartItems.length === 0) {
       alert("Your cart is empty.");
       return;

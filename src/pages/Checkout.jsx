@@ -60,7 +60,7 @@ export default function Checkout() {
     setError("");
 
     // must be logged-in user to place order
-    if (!user || !user.token) {
+    if (!user || !user.role !== "user" || !user.token) {
       // send user to login — pass the current location so they return to checkout after login
       navigate("/login", { state: { from: location } });
       return;

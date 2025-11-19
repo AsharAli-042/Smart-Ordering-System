@@ -6,7 +6,6 @@
 
 # User
 
-1. Fix the Navbar.
 2. Add another field of email in the database. [Medium Prio]
 
 # Menu
