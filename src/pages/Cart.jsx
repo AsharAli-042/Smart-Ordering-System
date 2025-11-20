@@ -1,21 +1,24 @@
 // src/pages/Cart.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useCart } from "../contexts/CartContext";
+import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
 import { Trash2 } from "lucide-react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Cart() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { items: cartItems, increase, decrease, removeItem, totalPrice } = useCart();
+  const { user } = useAuth();
 
   // New: table number state (string so we accept A1 etc)
   const [tableNumber, setTableNumber] = useState("");
 
   // Simple validation helper
   const handleCheckoutClick = () => {
-
-    if (!user || !user.role !== "user" || !user.token) {
+    // require a logged-in regular user
+    if (!user || user.role !== "user" || !user.token) {
       // send user to login — pass the current location so they return to checkout after login
       navigate("/login", { state: { from: location } });
       return;
@@ -42,7 +45,9 @@ export default function Cart() {
 
         {/* Table number input */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Table number <span className="text-red-500">*</span></label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Table number <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             inputMode="numeric"

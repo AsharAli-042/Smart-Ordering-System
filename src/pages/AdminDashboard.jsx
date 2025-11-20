@@ -58,9 +58,16 @@ export default function AdminDashboard() {
         };
 
         const [weeklyRes, peakRes, topRes] = await Promise.all([
-          fetch("http://localhost:5000/api/admin/weekly-revenue", { headers }),
-          fetch("http://localhost:5000/api/admin/peak-hours", { headers }),
-          fetch("http://localhost:5000/api/admin/top-selling", { headers }),
+          fetch(
+            "http://localhost:5000/api/admin/weekly-revenue?tz=Asia/Karachi",
+            { headers }
+          ),
+          fetch("http://localhost:5000/api/admin/peak-hours?tz=Asia/Karachi", {
+            headers,
+          }),
+          fetch("http://localhost:5000/api/admin/top-selling?tz=Asia/Karachi", {
+            headers,
+          }),
         ]);
 
         if (!weeklyRes.ok || !peakRes.ok || !topRes.ok) {
@@ -72,17 +79,20 @@ export default function AdminDashboard() {
         const peakRaw = await peakRes.json();
         const topRaw = await topRes.json();
 
-        // Normalize weekly data
+        // Normalize weekly data (use Asia/Karachi timezone to match backend aggregation)
+        const tz = "Asia/Karachi";
         const days = [];
         for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const iso = d.toISOString().slice(0, 10);
-          days.push({
-            iso,
-            label: d.toLocaleString("en-US", { weekday: "short" }),
+          // build date for each day in PKT by constructing an ISO YYYY-MM-DD using toLocaleString with en-CA
+          const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+          const iso = d.toLocaleDateString("en-CA", { timeZone: tz }); // "YYYY-MM-DD"
+          const label = new Date(d).toLocaleString("en-US", {
+            weekday: "short",
+            timeZone: tz,
           });
+          days.push({ iso, label });
         }
+
         const weeklyMap = Object.fromEntries(weeklyRaw.map((w) => [w.date, w]));
         const weeklyNormalized = days.map((d) => {
           const entry = weeklyMap[d.iso];
@@ -195,7 +205,8 @@ export default function AdminDashboard() {
           <div className="mb-6 p-4 rounded-xl bg-red-50 border-2 border-red-200 text-red-700">
             <strong>Error loading stats:</strong> {statsError}
             <div className="text-sm mt-1">
-              Check backend `/api/admin/stats` and that the admin token is valid.
+              Check backend `/api/admin/stats` and that the admin token is
+              valid.
             </div>
           </div>
         )}
@@ -327,7 +338,7 @@ export default function AdminDashboard() {
                 Busiest Hours Today
               </h2>
             </div>
-            
+
             {chartsLoading ? (
               <div className="h-[300px] flex items-center justify-center">
                 <p className="text-gray-400">Loading...</p>
@@ -339,7 +350,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 {peakHoursData
-                  .filter(p => p.orders > 0)
+                  .filter((p) => p.orders > 0)
                   .sort((a, b) => b.orders - a.orders)
                   .slice(0, 9)
                   .map((p, i) => (
@@ -410,10 +421,8 @@ export default function AdminDashboard() {
 
           {/* Peak Hours Bar Chart */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-orange-100">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">
-              Peak Hours
-            </h2>
-            
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Peak Hours</h2>
+
             {chartsLoading ? (
               <div className="h-[300px] flex items-center justify-center">
                 <p className="text-gray-400">Loading...</p>

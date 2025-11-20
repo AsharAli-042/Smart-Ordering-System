@@ -21,20 +21,26 @@ const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS || 5); // numeric off
  * Compute UTC Date that represents the start-of-day (00:00) in the target timezone.
  * daysAgo = 0 -> today, 1 -> yesterday, etc.
  */
-function startOfDayInUTC(offsetHours = TZ_OFFSET_HOURS, daysAgo = 0) {
-  const now = new Date();
-  const offsetMs = offsetHours * 60 * 60 * 1000;
-  // local time in target tz as Date object
-  const localNow = new Date(now.getTime() + offsetMs);
-  // local midnight
-  const localMidnight = new Date(
-    localNow.getFullYear(),
-    localNow.getMonth(),
-    localNow.getDate() - daysAgo
-  );
-  // convert local midnight back to UTC time
-  const startUtc = new Date(localMidnight.getTime() - offsetMs);
-  return startUtc;
+function startOfDayInUTC(
+  offsetHours = 0,
+  daysAgo = 0,
+  tz = TZ_NAME || "Asia/Karachi"
+) {
+  // get an instant daysAgo days before now
+  const instant =
+    Date.now() - Math.max(0, Math.floor(daysAgo)) * 24 * 60 * 60 * 1000;
+  const localIso = new Date(instant).toLocaleDateString("en-CA", {
+    timeZone: tz,
+  }); // "YYYY-MM-DD"
+  const [yearStr, monthStr, dayStr] = localIso.split("-");
+  const year = Number(yearStr),
+    month = Number(monthStr),
+    day = Number(dayStr);
+  // Date.UTC gives midnight UTC for that date; local midnight (tz) corresponds to UTC = local - offset
+  const utcMs =
+    Date.UTC(year, month - 1, day, 0, 0, 0) -
+    Number(offsetHours || 0) * 60 * 60 * 1000;
+  return new Date(utcMs);
 }
 
 const app = express();
@@ -513,34 +519,39 @@ app.get("/api/feedback/check/:orderId", authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/admin/stats
-// Protected: admin only
+/**
+ * GET /api/admin/stats
+ * returns summary KPIs: totalOrdersToday, revenueToday, revenueWeek
+ */
 app.get("/api/admin/stats", authMiddleware, async (req, res) => {
   try {
     if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    // compute UTC boundaries that correspond to midnight in your timezone
-    const startOfTodayUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 0);
-    const startOfWeekUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 6); // last 7 days including today
+    const tz = TZ_NAME || "Asia/Karachi";
+    const offsetHours = Number(TZ_OFFSET_HOURS || 0);
 
-    // total orders today (placedAt >= local-midnight)
+    // Start of today local in UTC, and start of week (6 days ago local midnight)
+    const startOfTodayUTC = startOfDayInUTC(offsetHours, 0, tz);
+    const startOfWeekUTC = startOfDayInUTC(offsetHours, 6, tz); // last 7 days including today
+
+    // total orders today
     const totalOrdersToday = await Order.countDocuments({
       placedAt: { $gte: startOfTodayUTC },
     });
 
-    // revenue today (sum total for orders placed today)
+    // revenue today
     const revenueTodayAgg = await Order.aggregate([
       { $match: { placedAt: { $gte: startOfTodayUTC } } },
-      { $group: { _id: null, sum: { $sum: "$total" } } },
+      { $group: { _id: null, sum: { $sum: { $ifNull: ["$total", 0] } } } },
     ]);
     const revenueToday = (revenueTodayAgg[0] && revenueTodayAgg[0].sum) || 0;
 
-    // weekly revenue (last 7 days from local midnight)
+    // revenue for the last 7 days (from startOfWeekUTC)
     const revenueWeekAgg = await Order.aggregate([
       { $match: { placedAt: { $gte: startOfWeekUTC } } },
-      { $group: { _id: null, sum: { $sum: "$total" } } },
+      { $group: { _id: null, sum: { $sum: { $ifNull: ["$total", 0] } } } },
     ]);
     const revenueWeek = (revenueWeekAgg[0] && revenueWeekAgg[0].sum) || 0;
 
@@ -555,16 +566,22 @@ app.get("/api/admin/stats", authMiddleware, async (req, res) => {
   }
 });
 
-// --- ADD TO server.js ---
-// GET /api/admin/weekly-revenue
+/**
+ * GET /api/admin/weekly-revenue
+ * returns list for last 7 local days (date: "YYYY-MM-DD", revenue, orders)
+ */
 app.get("/api/admin/weekly-revenue", authMiddleware, async (req, res) => {
   try {
-    if (!req.user || req.user.role !== "admin")
+    if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
+    }
 
-    const startOfTodayUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 0);
-    const startOfWeekUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 6);
+    const tz = TZ_NAME || "Asia/Karachi";
+    const offsetHours = Number(TZ_OFFSET_HOURS || 0);
 
+    const startOfWeekUTC = startOfDayInUTC(offsetHours, 6, tz);
+
+    // Aggregate grouped by local date string in timezone
     const agg = await Order.aggregate([
       { $match: { placedAt: { $gte: startOfWeekUTC } } },
       {
@@ -573,21 +590,38 @@ app.get("/api/admin/weekly-revenue", authMiddleware, async (req, res) => {
             $dateToString: {
               format: "%Y-%m-%d",
               date: "$placedAt",
-              timezone: TZ_NAME,
+              timezone: tz,
             },
           },
-          revenue: { $sum: "$total" },
+          revenue: { $sum: { $ifNull: ["$total", 0] } },
           orders: { $sum: 1 },
         },
       },
       { $sort: { _id: 1 } },
     ]);
 
-    const result = agg.map((a) => ({
-      date: a._id,
-      revenue: a.revenue || 0,
-      orders: a.orders || 0,
+    // Build full 7-day list (including zeros) to ensure frontend always receives 7 entries
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const iso = startOfDayInUTC(offsetHours, i, tz)
+        .toLocaleString("en-CA", { timeZone: tz })
+        .slice(0, 10);
+      days.push(iso);
+    }
+
+    const map = Object.fromEntries(
+      agg.map((a) => [
+        a._id,
+        { revenue: a.revenue || 0, orders: a.orders || 0 },
+      ])
+    );
+
+    const result = days.map((d) => ({
+      date: d,
+      revenue: map[d] ? map[d].revenue : 0,
+      orders: map[d] ? map[d].orders : 0,
     }));
+
     return res.json(result);
   } catch (err) {
     console.error("GET /api/admin/weekly-revenue error:", err);
@@ -597,50 +631,74 @@ app.get("/api/admin/weekly-revenue", authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/admin/peak-hours
+/**
+ * GET /api/admin/peak-hours
+ * returns array of 24 entries: { hour: 0..23, orders }
+ * computed across last 7 local days (so hours are local PKT hours)
+ */
 app.get("/api/admin/peak-hours", authMiddleware, async (req, res) => {
   try {
-    if (!req.user || req.user.role !== "admin")
+    if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
+    }
 
-    const startOfWeekUTC = startOfDayInUTC(TZ_OFFSET_HOURS, 6);
+    const tz = TZ_NAME || "Asia/Karachi";
+    const offsetHours = Number(TZ_OFFSET_HOURS || 0);
+
+    const startOfWeekUTC = startOfDayInUTC(offsetHours, 6, tz);
 
     const agg = await Order.aggregate([
       { $match: { placedAt: { $gte: startOfWeekUTC } } },
       {
         $group: {
           _id: {
-            $dateToString: {
-              format: "%H",
-              date: "$placedAt",
-              timezone: TZ_NAME,
-            },
-          }, // hour 00-23 in TZ
+            $dateToString: { format: "%H", date: "$placedAt", timezone: tz },
+          },
           orders: { $sum: 1 },
         },
       },
       { $sort: { _id: 1 } },
     ]);
 
-    const result = agg.map((a) => ({
-      hour: Number(a._id),
-      orders: a.orders || 0,
+    // map results and fill missing hours 0..23
+    const map = Object.fromEntries(
+      agg.map((a) => [Number(a._id), a.orders || 0])
+    );
+    const hours = Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      orders: map[h] || 0,
     }));
-    return res.json(result);
+
+    return res.json(hours);
   } catch (err) {
     console.error("GET /api/admin/peak-hours error:", err);
     return res.status(500).json({ message: "Failed to compute peak hours" });
   }
 });
 
-// GET /api/admin/top-selling
+/**
+ * GET /api/admin/top-selling
+ * returns top selling items across all time (or you can add ?days=7 to limit)
+ */
 app.get("/api/admin/top-selling", authMiddleware, async (req, res) => {
   try {
-    if (!req.user || req.user.role !== "admin")
+    if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
+    }
 
-    // Unwind items and group by item name (fallback to menuItemId if name missing)
-    const agg = await Order.aggregate([
+    // Optional: limit by days param (e.g., ?days=7)
+    const days = Number(req.query.days || 0);
+    const match =
+      days > 0
+        ? {
+            placedAt: {
+              $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+            },
+          }
+        : {};
+
+    const pipeline = [
+      ...(Object.keys(match).length ? [{ $match: match }] : []),
       { $unwind: "$items" },
       {
         $group: {
@@ -658,13 +716,16 @@ app.get("/api/admin/top-selling", authMiddleware, async (req, res) => {
       },
       { $sort: { sales: -1 } },
       { $limit: 10 },
-    ]);
+    ];
+
+    const agg = await Order.aggregate(pipeline);
 
     const result = agg.map((a) => ({
       name: String(a._id),
       sales: a.sales || 0,
       revenue: a.revenue || 0,
     }));
+
     return res.json(result);
   } catch (err) {
     console.error("GET /api/admin/top-selling error:", err);
@@ -766,7 +827,13 @@ app.post("/api/admin/menu", authMiddleware, async (req, res) => {
     if (!req.user || req.user.role !== "admin")
       return res.status(403).json({ message: "Forbidden" });
 
-    const { name, price, description = "", image = "", category } = req.body || {};
+    const {
+      name,
+      price,
+      description = "",
+      image = "",
+      category,
+    } = req.body || {};
     if (!name || typeof price === "undefined" || price === null) {
       return res
         .status(400)
@@ -808,7 +875,8 @@ app.put("/api/admin/menu/:id", authMiddleware, async (req, res) => {
     if (typeof description !== "undefined")
       update.description = String(description).trim();
     if (typeof image !== "undefined") update.image = String(image).trim();
-    if (typeof category !== "undefined") update.category = String(category).trim();
+    if (typeof category !== "undefined")
+      update.category = String(category).trim();
 
     const updated = await MenuItem.findByIdAndUpdate(id, update, {
       new: true,
@@ -822,7 +890,6 @@ app.put("/api/admin/menu/:id", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: "Failed to update menu item" });
   }
 });
-
 
 // DELETE menu item (admin)
 app.delete("/api/admin/menu/:id", authMiddleware, async (req, res) => {

@@ -1,6 +1,6 @@
 // src/pages/Checkout.jsx
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
@@ -17,8 +17,6 @@ export default function Checkout() {
     localStorage.getItem("pendingTableNumber") ||
     "";
   const [tableNumber] = useState(String(tableNumberFromState || "").trim()); // read-only
-
-  // const [specialInstructions, setSpecialInstructions] = useState("");
 
   const [specialInstructions, setSpecialInstructions] = useState(() => {
     return localStorage.getItem("pendingSpecialInstructions") || "";
@@ -59,10 +57,11 @@ export default function Checkout() {
   const handleCheckout = async () => {
     setError("");
 
-    // must be logged-in user to place order
-    if (!user || !user.role !== "user" || !user.token) {
-      // send user to login — pass the current location so they return to checkout after login
-      navigate("/login", { state: { from: location } });
+    // ==> FIXED: correct role/token check
+    // require a logged-in regular user
+    if (!user || user.role !== "user" || !user.token) {
+      // Save pending info and force login
+      savePendingAndRedirectToLogin();
       return;
     }
 
@@ -125,15 +124,15 @@ export default function Checkout() {
       };
       localStorage.setItem("lastOrder", JSON.stringify(lastOrder));
 
+      // remove pending saved values
       try {
         localStorage.removeItem("pendingCart");
         localStorage.removeItem("pendingTableNumber");
         localStorage.removeItem("pendingSpecialInstructions");
       } catch (e) {}
 
+      // Clear client-side cart & navigate to confirmation
       clearCart();
-      navigate("/order-placed");
-
       // Clear server-side cart (best-effort)
       try {
         if (user && user.token) {
@@ -149,7 +148,6 @@ export default function Checkout() {
         console.warn("Failed to clear server cart:", err);
       }
 
-      clearCart();
       navigate("/order-placed");
     } catch (err) {
       console.error("Checkout error:", err);
