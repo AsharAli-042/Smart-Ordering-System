@@ -118,14 +118,12 @@ app.post("/api/auth/signup", async (req, res) => {
     });
 
     // Respond with safe public data (do NOT send passwordHash)
-    return res
-      .status(201)
-      .json({
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      });
+    return res.status(201).json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
   } catch (err) {
     console.error("POST /api/auth/signup error:", err);
     // handle duplicate key more gracefully
@@ -168,7 +166,9 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       // Always respond success to avoid user enumeration
-      return res.status(200).json({ message: "If that email exists, a reset link was sent." });
+      return res
+        .status(200)
+        .json({ message: "If that email exists, a reset link was sent." });
     }
 
     // Create a secure token
@@ -180,7 +180,9 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
     // Email link (use your frontend URL)
     const frontendBase = process.env.FRONTEND_URL || "http://localhost:5173";
-    const resetLink = `${frontendBase}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetLink = `${frontendBase}/reset-password?token=${encodeURIComponent(
+      token
+    )}`;
 
     const html = `
       <p>Hello ${user.name},</p>
@@ -191,13 +193,19 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     `;
 
     try {
-      await sendEmail({ to: user.email, subject: "Reset your Smart Ordering password", html });
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your Smart Ordering password",
+        html,
+      });
     } catch (mailErr) {
       console.error("Failed to send reset email:", mailErr);
       // don't fail; respond OK so UX isn't broken
     }
 
-    return res.status(200).json({ message: "If that email exists, a reset link was sent." });
+    return res
+      .status(200)
+      .json({ message: "If that email exists, a reset link was sent." });
   } catch (err) {
     console.error("POST /api/auth/forgot-password error:", err);
     return res.status(500).json({ message: "Failed to process request" });
@@ -207,8 +215,12 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 app.post("/api/auth/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body || {};
-    if (!token || !newPassword) return res.status(400).json({ message: "Token and newPassword are required" });
-    if (newPassword.length < 6) return res.status(400).json({ message: "Password too short" });
+    if (!token || !newPassword)
+      return res
+        .status(400)
+        .json({ message: "Token and newPassword are required" });
+    if (newPassword.length < 6)
+      return res.status(400).json({ message: "Password too short" });
 
     const pr = await PasswordReset.findOne({ token });
     if (!pr || pr.expiresAt < new Date()) {
@@ -464,11 +476,9 @@ app.post("/api/feedback", auth, async (req, res) => {
     // ensure this user hasn't already left feedback for this order
     const existing = await Feedback.findOne({ orderId, userId });
     if (existing) {
-      return res
-        .status(400)
-        .json({
-          message: "You have already submitted feedback for this order.",
-        });
+      return res.status(400).json({
+        message: "You have already submitted feedback for this order.",
+      });
     }
 
     const fb = await Feedback.create({
@@ -756,7 +766,7 @@ app.post("/api/admin/menu", authMiddleware, async (req, res) => {
     if (!req.user || req.user.role !== "admin")
       return res.status(403).json({ message: "Forbidden" });
 
-    const { name, price, description = "", image = "" } = req.body || {};
+    const { name, price, description = "", image = "", category } = req.body || {};
     if (!name || typeof price === "undefined" || price === null) {
       return res
         .status(400)
@@ -768,6 +778,10 @@ app.post("/api/admin/menu", authMiddleware, async (req, res) => {
       price: Number(price),
       description: String(description).trim(),
       image: String(image).trim(),
+      // only set category if provided (model will apply default otherwise)
+      ...(typeof category !== "undefined" && category !== null
+        ? { category: String(category).trim() }
+        : {}),
     });
 
     return res.status(201).json(item);
@@ -784,7 +798,7 @@ app.put("/api/admin/menu/:id", authMiddleware, async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
 
     const { id } = req.params;
-    const { name, price, description, image } = req.body || {};
+    const { name, price, description, image, category } = req.body || {};
 
     if (!id) return res.status(400).json({ message: "Missing item id" });
 
@@ -794,6 +808,7 @@ app.put("/api/admin/menu/:id", authMiddleware, async (req, res) => {
     if (typeof description !== "undefined")
       update.description = String(description).trim();
     if (typeof image !== "undefined") update.image = String(image).trim();
+    if (typeof category !== "undefined") update.category = String(category).trim();
 
     const updated = await MenuItem.findByIdAndUpdate(id, update, {
       new: true,
@@ -807,6 +822,7 @@ app.put("/api/admin/menu/:id", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: "Failed to update menu item" });
   }
 });
+
 
 // DELETE menu item (admin)
 app.delete("/api/admin/menu/:id", authMiddleware, async (req, res) => {

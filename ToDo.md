@@ -1,12 +1,4 @@
 
-# Reset Password
-
-1. Shouldn't be able to go back to the reset password page after being navigated to the Login page.
-
-# SMTP Server
-
-1. Change from Mailtrap SMTP Server to Google's own Provided SMTP Server
-
 # User
 
 # Menu
