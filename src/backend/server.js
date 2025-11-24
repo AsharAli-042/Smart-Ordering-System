@@ -45,7 +45,7 @@ function startOfDayInUTC(
 }
 
 const app = express();
-app.use(cors({ origin: "https://smart-ordering-system-psi.vercel.app/*" }));
+app.use(cors({ origin: "https://smart-ordering-system-psi.vercel.app" }));
 app.use(bodyParser.json());
 
 const USERS_FILE = "./users.json";
