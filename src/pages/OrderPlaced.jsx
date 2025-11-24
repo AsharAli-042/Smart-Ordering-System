@@ -2,7 +2,19 @@ import { useEffect, useState, useRef } from "react";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Clock, CheckCircle, Loader2 } from "lucide-react";
+import { 
+  Clock, 
+  CheckCircle, 
+  Loader2, 
+  Package, 
+  ChefHat, 
+  Truck, 
+  Home,
+  MessageSquare,
+  AlertCircle,
+  Calendar,
+  Users
+} from "lucide-react";
 
 export default function OrderPlaced() {
   const navigate = useNavigate();
@@ -13,12 +25,10 @@ export default function OrderPlaced() {
   const [orderError, setOrderError] = useState("");
   const pollRef = useRef(null);
 
-  // Feedback-related states
-  const [feedbackChecked, setFeedbackChecked] = useState(false); // whether we've checked if feedback exists
-  const [feedbackExists, setFeedbackExists] = useState(false);   // whether feedback already submitted
-  const [showCompletedModal, setShowCompletedModal] = useState(false); // local modal shown once when completed
+  const [feedbackChecked, setFeedbackChecked] = useState(false);
+  const [feedbackExists, setFeedbackExists] = useState(false);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
 
-  // helper to format times in Pakistan timezone
   const fmt = (iso) => {
     try {
       if (!iso) return "—";
@@ -29,12 +39,11 @@ export default function OrderPlaced() {
     }
   };
 
-  // Map backend status to friendly label and step index
   const STATUS_STEPS = [
-    { key: "placed", label: "Placed" },
-    { key: "in-progress", label: "Preparing" },
-    { key: "ready", label: "Ready" },
-    { key: "completed", label: "Completed" },
+    { key: "placed", label: "Order Placed", icon: Package, color: "orange" },
+    { key: "in-progress", label: "Preparing", icon: ChefHat, color: "yellow" },
+    { key: "ready", label: "Ready", icon: CheckCircle, color: "blue" },
+    { key: "completed", label: "Completed", icon: Truck, color: "green" },
   ];
 
   const getStatusIndex = (status) => {
@@ -44,17 +53,14 @@ export default function OrderPlaced() {
     return idx >= 0 ? idx : STATUS_STEPS.length - 1;
   };
 
-  // --- load lastOrder from localStorage on mount; if not present, redirect out ---
   useEffect(() => {
     try {
       const raw = localStorage.getItem("lastOrder");
       if (!raw) {
-        // nothing to show -> push back to menu
         navigate("/");
         return;
       }
       const obj = JSON.parse(raw);
-      // basic sanity: must at least have orderId
       if (!obj?.orderId) {
         navigate("/");
         return;
@@ -65,10 +71,8 @@ export default function OrderPlaced() {
       console.warn("Failed to read lastOrder", err);
       navigate("/");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- helper: check if feedback exists for this order (server for logged-in, local for guests) ---
   const checkFeedbackExistence = async (orderId) => {
     setFeedbackChecked(false);
     setFeedbackExists(false);
@@ -77,7 +81,6 @@ export default function OrderPlaced() {
       return;
     }
 
-    // First, check guest local storage (fast fallback)
     try {
       const localGuest = JSON.parse(localStorage.getItem("guestFeedbacks") || "[]");
       if (Array.isArray(localGuest) && localGuest.find((f) => String(f.orderId) === String(orderId))) {
@@ -85,11 +88,8 @@ export default function OrderPlaced() {
         setFeedbackChecked(true);
         return;
       }
-    } catch (e) {
-      // ignore parse errors
-    }
+    } catch (e) {}
 
-    // If logged-in, call server endpoint to check if this user submitted feedback
     if (user && user.token) {
       try {
         const res = await fetch(`http://localhost:5000/api/feedback/check/${orderId}`, {
@@ -99,23 +99,19 @@ export default function OrderPlaced() {
           const j = await res.json();
           setFeedbackExists(Boolean(j.exists));
         } else {
-          // treat non-ok as "no feedback" (we don't want to block user due to transient server error)
           setFeedbackExists(false);
         }
       } catch (e) {
-        // network error -> assume not submitted (frontend won't allow double-submission server-side)
         setFeedbackExists(false);
       } finally {
         setFeedbackChecked(true);
       }
     } else {
-      // guest and no local feedback found
       setFeedbackExists(false);
       setFeedbackChecked(true);
     }
   };
 
-  // fetch single order from backend (if orderId exists)
   const fetchOrder = async (orderId) => {
     if (!orderId) return;
     setOrderLoading(true);
@@ -148,7 +144,6 @@ export default function OrderPlaced() {
 
       const data = await res.json();
 
-      // If user is logged in, ensure this order belongs to them (safety)
       if (user && user.id && data.userId && String(data.userId) !== String(user.id)) {
         setOrderError("You are not authorized to view this order.");
         setOrderLoading(false);
@@ -174,26 +169,21 @@ export default function OrderPlaced() {
           lastOrder?.tableNo,
       };
 
-      // update lastOrder locally and in localStorage (keep them in sync)
       setLastOrder((prev) => {
         const merged = { ...(prev || {}), ...normalized };
         try { localStorage.setItem("lastOrder", JSON.stringify(merged)); } catch {}
         return merged;
       });
 
-      // If order is completed and we haven't checked feedback yet, check it
       const st = normalized.status;
       if (st === "completed" || st === "delivered") {
-        // trigger modal once per order (local)
         const notifiedKey = `notifiedFor:${normalized.orderId}`;
         if (!localStorage.getItem(notifiedKey)) {
           setShowCompletedModal(true);
           try { localStorage.setItem(notifiedKey, "1"); } catch {}
         }
-        // now check feedback state for this order
         checkFeedbackExistence(normalized.orderId);
       } else {
-        // reset feedback check if order reverted (unlikely)
         setFeedbackChecked(false);
       }
     } catch (err) {
@@ -204,14 +194,11 @@ export default function OrderPlaced() {
     }
   };
 
-  // start polling for order updates
   useEffect(() => {
     if (!lastOrder?.orderId) return;
 
-    // initial fetch
     fetchOrder(lastOrder.orderId);
 
-    // poll every 5 seconds
     pollRef.current = setInterval(() => {
       fetchOrder(lastOrder.orderId);
     }, 5000);
@@ -219,10 +206,8 @@ export default function OrderPlaced() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastOrder?.orderId, user?.token]);
 
-  // when lastOrder initially loaded, if it's already completed then ensure we check feedback
   useEffect(() => {
     if (!lastOrder?.orderId) return;
     const st = (lastOrder?.status || "").toString().toLowerCase();
@@ -234,207 +219,256 @@ export default function OrderPlaced() {
         try { localStorage.setItem(notifiedKey, "1"); } catch {}
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastOrder?.orderId]);
 
-  // navigate helpers
   const handleBrowseMenu = () => navigate("/");
 
-  // The "Give Feedback" click handler:
   const handleGoToFeedback = () => {
     if (!lastOrder?.orderId) return;
-    // prevent going if feedback already exists (safety)
     if (feedbackExists) {
-      // optional: show an alert or toast
       alert("Feedback for this order has already been submitted.");
       return;
     }
 
-    // only allow feedback if order is completed
     const st = (lastOrder?.status || "").toLowerCase();
     if (!(st === "completed" || st === "delivered")) {
       alert("Feedback is available only after the order is completed.");
       return;
     }
 
-    // if user logged in -> go to feedback page directly
     if (user && user.token) {
       navigate("/feedback", { state: { orderId: lastOrder.orderId } });
       return;
     }
 
-    // NOT logged in: send to login and include redirect instruction so after login user can be returned to feedback
-    // NOTE: Your Login page must handle `location.state?.redirectTo` or `location.state` to perform the post-login redirect.
     navigate("/login", { state: { redirectTo: "/feedback", orderId: lastOrder.orderId } });
   };
 
   const currentStatusIndex = getStatusIndex(lastOrder?.status);
+  const isCompleted = lastOrder?.status === "completed" || lastOrder?.status === "delivered";
+
   return (
-    <div className="min-h-screen bg-[#FFF5EE]">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-6 pt-24 pb-16">
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 text-center">
-          <h1 className="text-3xl font-bold text-[#FF4C29] mb-2">
-            YOUR ORDER HAS BEEN PLACED
-          </h1>
-          <p className="text-gray-600 text-lg mb-4">
-            We got your order — we'll keep you updated on the progress.
-          </p>
-
-          {orderLoading ? (
-            <div className="flex items-center justify-center gap-3">
-              <Loader2 className="animate-spin" />
-              <span className="text-gray-600">Loading order status…</span>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        
+        {/* Success Header */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8 text-center border border-orange-100">
+          <div className="flex justify-center mb-4">
+            <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center animate-bounce">
+              <CheckCircle className="w-10 h-10 text-white" />
             </div>
-          ) : orderError ? (
-            <div className="text-red-600">{orderError}</div>
-          ) : lastOrder ? (
-            <div className="text-left mt-6">
-              {/* Order meta */}
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <p className="text-sm text-gray-500">Order ID</p>
-                  <p className="font-semibold text-[#2E2E2E]">
-                    {lastOrder.orderId || "N/A"}
-                  </p>
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-3">
+            Order Confirmed!
+          </h1>
+          <p className="text-gray-600 text-lg">
+            We've received your order and our kitchen is preparing your delicious meal
+          </p>
+        </div>
+
+        {orderLoading ? (
+          <div className="bg-white rounded-3xl shadow-lg p-12 text-center border border-orange-100">
+            <Loader2 className="w-12 h-12 text-orange-500 mx-auto mb-4 animate-spin" />
+            <p className="text-gray-600 font-semibold">Loading order details...</p>
+          </div>
+        ) : orderError ? (
+          <div className="bg-white rounded-3xl shadow-lg p-12 text-center border-2 border-red-200">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 font-semibold text-lg">{orderError}</p>
+          </div>
+        ) : lastOrder ? (
+          <div className="space-y-6">
+            
+            {/* Order Info Card */}
+            <div className="bg-white rounded-3xl shadow-lg p-6 border border-orange-100">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl">
+                  <Package className="w-10 h-10 text-orange-600" />
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium">Order ID</p>
+                    <p className="text-lg font-bold text-gray-800">
+                      #{String(lastOrder.orderId).slice(-8).toUpperCase()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Placed</p>
-                  <p className="font-medium text-gray-700">
-                    {fmt(lastOrder.placedAt)}
-                  </p>
+
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
+                  <Calendar className="w-10 h-10 text-blue-600" />
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium">Placed At</p>
+                    <p className="text-sm font-bold text-gray-800">
+                      {fmt(lastOrder.placedAt)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Table</p>
-                  <p className="font-medium text-gray-700">
-                    {lastOrder.tableNumber ?? "—"}
-                  </p>
+
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
+                  <Users className="w-10 h-10 text-purple-600" />
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium">Table Number</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {lastOrder.tableNumber ?? "—"}
+                    </p>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Progress Steps */}
-              <div className="space-y-4 mb-6">
+            {/* Progress Tracker */}
+            <div className="bg-white rounded-3xl shadow-lg p-8 border border-orange-100">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <Clock className="w-6 h-6 text-orange-600" />
+                Order Progress
+              </h2>
+
+              <div className="space-y-1">
                 {STATUS_STEPS.map((step, idx) => {
                   const done = idx <= currentStatusIndex;
+                  const current = idx === currentStatusIndex;
+                  const Icon = step.icon;
+
                   return (
-                    <div key={step.key} className="flex items-center gap-4">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          done
-                            ? "bg-[#FF4C29] text-white"
-                            : "bg-gray-200 text-gray-600"
-                        }`}
-                      >
-                        {done ? (
-                          <CheckCircle className="w-5 h-5" />
-                        ) : (
-                          <Clock className="w-5 h-5" />
+                    <div key={step.key} className="relative">
+                      <div className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
+                        current ? 'bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300' : 
+                        done ? 'bg-green-50' : 'bg-gray-50'
+                      }`}>
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                          done 
+                            ? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg' 
+                            : 'bg-gray-200'
+                        }`}>
+                          <Icon className={`w-7 h-7 ${done ? 'text-white' : 'text-gray-400'}`} />
+                        </div>
+
+                        <div className="flex-1">
+                          <div className={`font-bold text-lg ${
+                            done ? 'text-gray-800' : 'text-gray-400'
+                          }`}>
+                            {step.label}
+                          </div>
+                          <div className={`text-sm font-medium ${
+                            current ? 'text-orange-600' :
+                            done ? 'text-green-600' : 'text-gray-400'
+                          }`}>
+                            {current ? '🔄 In Progress' : done ? '✓ Completed' : '⏳ Pending'}
+                          </div>
+                        </div>
+
+                        {current && (
+                          <div className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold animate-pulse">
+                            <Clock className="w-4 h-4" />
+                            Active
+                          </div>
                         )}
                       </div>
-                      <div>
-                        <div
-                          className={`font-semibold ${
-                            done ? "text-gray-800" : "text-gray-500"
-                          }`}
-                        >
-                          {step.label}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {idx === currentStatusIndex
-                            ? "Current step"
-                            : idx < currentStatusIndex
-                            ? "Completed"
-                            : "Pending"}
-                        </div>
-                      </div>
+
+                      {idx < STATUS_STEPS.length - 1 && (
+                        <div className={`ml-7 h-4 w-1 ${
+                          done ? 'bg-green-500' : 'bg-gray-200'
+                        }`} />
+                      )}
                     </div>
                   );
                 })}
               </div>
+            </div>
 
-              {/* Items */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-[#2E2E2E] mb-3">Items</h3>
-                <div className="space-y-3">
-                  {(lastOrder.items || []).map((it, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center bg-[#FFF8F5] p-3 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        {it.image && (
-                          <img
-                            src={it.image}
-                            alt={it.name}
-                            className="w-12 h-12 object-cover rounded-md"
-                          />
-                        )}
-                        <div>
-                          <div className="font-medium text-[#2E2E2E]">
-                            {it.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Qty: {it.quantity}
-                          </div>
+            {/* Order Items */}
+            <div className="bg-white rounded-3xl shadow-lg p-8 border border-orange-100">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <ChefHat className="w-6 h-6 text-orange-600" />
+                Your Items
+              </h2>
+
+              <div className="space-y-3 mb-6">
+                {(lastOrder.items || []).map((it, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center gap-4">
+                      {it.image && (
+                        <img
+                          src={it.image}
+                          alt={it.name}
+                          className="w-16 h-16 object-cover rounded-lg shadow-md"
+                        />
+                      )}
+                      <div>
+                        <div className="font-bold text-gray-800 text-lg">
+                          {it.name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Quantity: <span className="font-semibold">{it.quantity}</span>
                         </div>
                       </div>
-                      <div className="font-semibold text-[#FF4C29]">
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">Item Total</div>
+                      <div className="font-bold text-orange-600 text-xl">
                         ₨ {Number(it.price || 0) * Number(it.quantity || 0)}
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-gray-200 mt-4 pt-4">
-                  <div className="flex justify-between text-gray-700 mb-2">
-                    <span>Subtotal</span>
-                    <span>₨ {lastOrder.subtotal ?? 0}</span>
                   </div>
-                  <div className="flex justify-between text-gray-700 mb-2">
-                    <span>Additional Charges</span>
-                    <span>₨ {lastOrder.additionalCharges ?? 0}</span>
-                  </div>
-                  <div className="flex justify-between text-[#FF4C29] text-lg font-bold mt-3">
-                    <span>Total</span>
-                    <span>₨ {lastOrder.total ?? 0}</span>
-                  </div>
-                </div>
+                ))}
               </div>
 
-              {/* Buttons */}
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={handleBrowseMenu}
-                  className="bg-white border px-6 py-2 rounded-lg font-semibold hover:bg-gray-50"
-                >
-                  Browse the Menu
-                </button>
-
-                <button
-                  onClick={handleGoToFeedback}
-                  disabled={
-                    !(
-                      lastOrder.status === "completed" ||
-                      lastOrder.status === "delivered"
-                    )
-                  }
-                  className={`px-6 py-2 rounded-lg font-semibold ${
-                    lastOrder.status === "completed" ||
-                    lastOrder.status === "delivered"
-                      ? "bg-[#FF4C29] text-white hover:bg-[#E63E1F]"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
-                >
-                  {lastOrder.status === "completed" ||
-                  lastOrder.status === "delivered"
-                    ? "Give Feedback"
-                    : "Feedback (available after completion)"}
-                </button>
+              {/* Pricing Summary */}
+              <div className="border-t-2 border-gray-200 pt-6 space-y-3">
+                <div className="flex justify-between text-gray-700 text-lg">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">₨ {lastOrder.subtotal ?? 0}</span>
+                </div>
+                <div className="flex justify-between text-gray-700 text-lg">
+                  <span>Additional Charges</span>
+                  <span className="font-semibold">₨ {lastOrder.additionalCharges ?? 0}</span>
+                </div>
+                <div className="flex justify-between bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl text-2xl font-bold shadow-lg">
+                  <span>Total Amount</span>
+                  <span>₨ {lastOrder.total ?? 0}</span>
+                </div>
               </div>
             </div>
-          ) : null}
-        </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={handleBrowseMenu}
+                className="flex items-center justify-center gap-2 bg-white border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-50 hover:border-gray-400 transition-all shadow-lg"
+              >
+                <Home className="w-5 h-5" />
+                Browse Menu
+              </button>
+
+              <button
+                onClick={handleGoToFeedback}
+                disabled={!isCompleted}
+                className={`flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all ${
+                  isCompleted
+                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 hover:shadow-xl"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                <MessageSquare className="w-5 h-5" />
+                {isCompleted ? "Give Feedback" : "Feedback (After Completion)"}
+              </button>
+            </div>
+
+            {/* Info Banner */}
+            {!isCompleted && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-semibold mb-1">Your order is being prepared</p>
+                  <p>We'll notify you when it's ready. The page updates automatically every 5 seconds.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );

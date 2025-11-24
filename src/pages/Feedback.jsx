@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { Star, MessageSquare, CheckCircle2, AlertCircle, Loader2, Home } from "lucide-react";
 
 export default function Feedback() {
   const location = useLocation();
@@ -15,6 +16,7 @@ export default function Feedback() {
   const [error, setError] = useState("");
 
   const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -36,12 +38,9 @@ export default function Feedback() {
         }
       }
     } catch (e) {}
-    // if no orderId found, go back to menu
     navigate("/", { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // fetch order + check if feedback exists
   useEffect(() => {
     if (!orderId) return;
     let cancelled = false;
@@ -62,7 +61,6 @@ export default function Feedback() {
         if (cancelled) return;
         setOrder(data);
 
-        // check server if this user already submitted feedback for this order
         if (user && user.token) {
           try {
             const chk = await fetch(`http://localhost:5000/api/feedback/check/${orderId}`, {
@@ -72,11 +70,8 @@ export default function Feedback() {
               const j = await chk.json();
               setAlreadySubmitted(!!j.exists);
             }
-          } catch (e) {
-            // ignore - we'll re-check at submit time
-          }
+          } catch (e) {}
         } else {
-          // guest: inspect localStorage guestFeedbacks for orderId
           try {
             const gf = JSON.parse(localStorage.getItem("guestFeedbacks") || "[]");
             setAlreadySubmitted(!!gf.find((f) => String(f.orderId) === String(orderId)));
@@ -103,17 +98,14 @@ export default function Feedback() {
     if (!orderId) return setError("Missing order reference.");
     if (!rating || rating < 1) return setError("Please provide rating.");
 
-    // block if already submitted locally
     if (alreadySubmitted) return setError("You have already submitted feedback for this order.");
 
-    // ensure order status is completed on server side too
     if (!order) return setError("Order info missing.");
     const st = (order.status || "").toLowerCase();
     if (!(st === "completed" || st === "delivered")) return setError("You can only give feedback after the order is completed.");
 
     setSubmitting(true);
     try {
-      // if user is authenticated we post to backend which enforces one-feedback-per-user-per-order
       if (user && user.token) {
         const res = await fetch("http://localhost:5000/api/feedback", {
           method: "POST",
@@ -129,7 +121,6 @@ export default function Feedback() {
         setSuccessMsg("Thanks — your feedback has been submitted!");
         setAlreadySubmitted(true);
       } else {
-        // guest: store locally but block duplicates
         const gf = JSON.parse(localStorage.getItem("guestFeedbacks") || "[]");
         if (gf.find((f) => String(f.orderId) === String(orderId))) {
           setAlreadySubmitted(true);
@@ -148,67 +139,203 @@ export default function Feedback() {
     }
   };
 
+  const getRatingText = (r) => {
+    if (r === 1) return "Poor";
+    if (r === 2) return "Fair";
+    if (r === 3) return "Good";
+    if (r === 4) return "Very Good";
+    if (r === 5) return "Excellent";
+    return "Rate your experience";
+  };
+
   return (
-    <div className="min-h-screen bg-[#FFF5EE]">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 via-amber-50 to-orange-100">
       <Navbar />
-      <div className="max-w-4xl mx-auto px-6 pt-24 pb-16">
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-6 text-center">
-          <h1 className="text-3xl font-bold text-[#2E2E2E] mb-2">Give Feedback</h1>
-          <p className="text-gray-600">Share your experience about this order.</p>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        
+        {/* Header Card */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8 text-center border border-orange-100">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-linear-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+              <MessageSquare className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">Share Your Experience</h1>
+          <p className="text-gray-600 text-lg">Your feedback helps us serve you better</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
+        {/* Main Content Card */}
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-orange-100">
+          
           {statusLoading ? (
-            <p className="text-center text-gray-600">Checking order status…</p>
-          ) : error ? (
-            <p className="text-center text-red-600">{error}</p>
+            <div className="p-12 text-center">
+              <Loader2 className="w-12 h-12 text-orange-500 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-600 font-semibold">Checking order status...</p>
+            </div>
+          ) : error && !order ? (
+            <div className="p-12 text-center">
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 font-semibold text-lg">{error}</p>
+            </div>
           ) : order ? (
             <>
-              <div className="mb-4 text-left">
-                <p className="text-sm text-gray-500">Order ID</p>
-                <p className="font-semibold">{order._id || order.id || orderId}</p>
-                <p className="text-sm text-gray-500 mt-2">Status: <span className="font-medium">{order.status}</span></p>
+              {/* Order Info Section */}
+              <div className="bg-linear-to-r from-orange-50 to-red-50 p-6 border-b border-orange-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Order ID</p>
+                    <p className="text-xl font-bold text-gray-800">
+                      #{String(order._id || order.id || orderId).slice(-8).toUpperCase()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+                      (order.status || "").toLowerCase() === "completed" || (order.status || "").toLowerCase() === "delivered"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {alreadySubmitted ? (
-                <div className="mb-4 text-center text-green-600 font-medium">
-                  You have already submitted feedback for this order.
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-center mb-6">
-                    {[1,2,3,4,5].map((s) => (
-                      <button key={s} onClick={() => setRating(s)} className={`text-3xl mx-1 transition ${rating >= s ? "text-[#FFA41B]" : "text-gray-300"}`}>
-                        ★
+              {/* Feedback Form */}
+              <div className="p-8">
+                {alreadySubmitted ? (
+                  <div className="text-center py-8">
+                    <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-4" />
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Thank You!</h3>
+                    <p className="text-green-600 font-semibold text-lg mb-6">
+                      You have already submitted feedback for this order.
+                    </p>
+                    <button
+                      onClick={() => navigate("/")}
+                      className="inline-flex items-center gap-2 bg-linear-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl font-bold hover:from-orange-600 hover:to-red-600 transition-all shadow-lg"
+                    >
+                      <Home className="w-5 h-5" />
+                      Browse Menu
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Rating Section */}
+                    <div className="mb-8">
+                      <label className="block text-center text-lg font-bold text-gray-800 mb-4">
+                        How was your experience?
+                      </label>
+                      <div className="flex justify-center items-center gap-2 mb-3">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setRating(s)}
+                            onMouseEnter={() => setHoverRating(s)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            className="transition-all duration-200 transform hover:scale-125"
+                          >
+                            <Star
+                              className={`w-12 h-12 transition-all ${
+                                (hoverRating || rating) >= s
+                                  ? "text-yellow-500 fill-yellow-500"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-center text-orange-600 font-semibold text-lg">
+                        {getRatingText(hoverRating || rating)}
+                      </p>
+                    </div>
+
+                    {/* Message Section */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">
+                        Tell us more (Optional)
+                      </label>
+                      <div className="relative">
+                        <div className="absolute top-4 left-4 pointer-events-none">
+                          <MessageSquare className="w-5 h-5 text-gray-400" />
+                        </div>
+                        <textarea
+                          rows="5"
+                          placeholder="What did you love? What could we improve? Share your thoughts..."
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all duration-200 text-gray-800 placeholder-gray-400 resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Success Message */}
+                    {successMsg && (
+                      <div className="mb-6 p-4 rounded-xl bg-green-50 border-2 border-green-200 text-green-700 flex items-center gap-3">
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span className="font-semibold">{successMsg}</span>
+                      </div>
+                    )}
+
+                    {/* Error Message */}
+                    {error && (
+                      <div className="mb-6 p-4 rounded-xl bg-red-50 border-2 border-red-200 text-red-700 flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5" />
+                        <span className="font-semibold">{error}</span>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={handleSubmit}
+                        disabled={submitting || !rating}
+                        className="flex-1 bg-linear-to-r from-orange-500 to-red-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-600 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-5 h-5" />
+                            Submit Feedback
+                          </>
+                        )}
                       </button>
-                    ))}
-                  </div>
 
-                  <textarea
-                    rows="4"
-                    placeholder="Tell us what you liked or what we can improve..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-[#FF4C29] text-gray-700 resize-none mb-4"
-                  />
+                      <button
+                        onClick={() => navigate("/")}
+                        className="flex-1 bg-white border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center justify-center gap-2"
+                      >
+                        <Home className="w-5 h-5" />
+                        Browse Menu
+                      </button>
+                    </div>
 
-                  {successMsg && <p className="text-green-600 mb-3">{successMsg}</p>}
-                  {error && <p className="text-red-600 mb-3">{error}</p>}
-
-                  <div className="flex gap-3 justify-center">
-                    <button onClick={handleSubmit} disabled={submitting} className="bg-[#FF4C29] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#E63E1F] transition disabled:opacity-50">
-                      {submitting ? "Submitting..." : "Submit Feedback"}
-                    </button>
-
-                    <button onClick={() => navigate("/")} className="bg-white border px-6 py-2 rounded-lg font-semibold hover:bg-gray-50">
-                      Browse the Menu
-                    </button>
-                  </div>
-                </>
-              )}
+                    {/* Guest User Note */}
+                    {!user && (
+                      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                        <p className="text-sm text-blue-800 text-center">
+                          <span className="font-semibold">Guest User:</span> Your feedback will be saved locally. 
+                          <button
+                            onClick={() => navigate("/signup")}
+                            className="ml-1 text-blue-600 hover:text-blue-700 underline font-semibold"
+                          >
+                            Create an account
+                          </button>
+                          {" "}to submit to our server.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </>
           ) : (
-            <p className="text-center text-gray-500">No order information available.</p>
+            <div className="p-12 text-center">
+              <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg font-semibold">No order information available.</p>
+            </div>
           )}
         </div>
       </div>

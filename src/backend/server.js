@@ -17,6 +17,7 @@ import { sendEmail } from "./utils/mailer.js";
 const TZ_NAME = process.env.TZ_NAME || "Asia/Karachi"; // Olson timezone name
 const TZ_OFFSET_HOURS = Number(process.env.TZ_OFFSET_HOURS || 5); // numeric offset fallback (if needed)
 
+
 /**
  * Compute UTC Date that represents the start-of-day (00:00) in the target timezone.
  * daysAgo = 0 -> today, 1 -> yesterday, etc.
@@ -87,6 +88,11 @@ const auth = authMiddleware;
 /* ----------------
    Auth routes
    ---------------- */
+
+app.get("/", (req, res) => {
+  res.send("Smart Ordering System API is running.");
+});
+
 app.post("/api/auth/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
