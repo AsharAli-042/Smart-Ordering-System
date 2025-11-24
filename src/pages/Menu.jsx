@@ -16,7 +16,7 @@ export default function Menu() {
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/menu");
+        const res = await fetch("https://smart-ordering-system.onrender.com/api/menu");
         if (!res.ok) {
           console.error("Failed to load menu:", res.status);
           return;

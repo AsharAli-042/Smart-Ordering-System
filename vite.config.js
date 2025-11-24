@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // proxy /api requests to backend at port 5000
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'https://smart-ordering-system.onrender.com',
         changeOrigin: true,
         secure: false,
       },

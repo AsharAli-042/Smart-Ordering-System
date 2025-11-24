@@ -19,7 +19,7 @@ export default function KitchenNavbar() {
     const token = user?.token || localStorage.getItem("token") || null;
     if (token) {
       try {
-        await fetch("http://localhost:5000/api/auth/logout", {
+        await fetch("https://smart-ordering-system.onrender.com/api/auth/logout", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });

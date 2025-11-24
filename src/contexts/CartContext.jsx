@@ -36,7 +36,7 @@ export const CartProvider = ({ children }) => {
   const syncToServer = async (updatedItems) => {
     if (user && user.token) {
       try {
-        await fetch("http://localhost:5000/api/cart", {
+        await fetch("https://smart-ordering-system.onrender.com/api/cart", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -104,7 +104,7 @@ export const CartProvider = ({ children }) => {
       if (user && user.token) {
         // logged-in: fetch server cart, then merge pendingCart (if any) into it
         try {
-          const res = await fetch("http://localhost:5000/api/cart", {
+          const res = await fetch("https://smart-ordering-system.onrender.com/api/cart", {
             headers: { Authorization: `Bearer ${user.token}` },
           });
 
@@ -132,7 +132,7 @@ export const CartProvider = ({ children }) => {
                   saveToLocal(merged);
                   // push merged to server
                   try {
-                    await fetch("http://localhost:5000/api/cart", {
+                    await fetch("https://smart-ordering-system.onrender.com/api/cart", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",

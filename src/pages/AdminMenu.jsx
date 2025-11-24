@@ -72,7 +72,7 @@ export default function AdminMenu() {
         const headers = { "Content-Type": "application/json" };
         if (user && user.token) headers.Authorization = `Bearer ${user.token}`;
 
-        const res = await fetch("http://localhost:5000/api/admin/menu", {
+        const res = await fetch("https://smart-ordering-system.onrender.com/api/admin/menu", {
           headers,
         });
         if (!res.ok) {
@@ -132,7 +132,7 @@ export default function AdminMenu() {
 
       if (isEditing && formData.id) {
         const res = await fetch(
-          `http://localhost:5000/api/admin/menu/${formData.id}`,
+          `https://smart-ordering-system.onrender.com/api/admin/menu/${formData.id}`,
           {
             method: "PUT",
             headers,
@@ -160,7 +160,7 @@ export default function AdminMenu() {
         );
         showToast("Item updated successfully!", "success");
       } else {
-        const res = await fetch("http://localhost:5000/api/admin/menu", {
+        const res = await fetch("https://smart-ordering-system.onrender.com/api/admin/menu", {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -205,7 +205,7 @@ export default function AdminMenu() {
       if (user && user.token) headers.Authorization = `Bearer ${user.token}`;
 
       const res = await fetch(
-        `http://localhost:5000/api/admin/menu/${itemId}`,
+        `https://smart-ordering-system.onrender.com/api/admin/menu/${itemId}`,
         {
           method: "DELETE",
           headers,

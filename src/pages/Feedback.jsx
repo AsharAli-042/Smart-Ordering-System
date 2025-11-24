@@ -52,7 +52,7 @@ export default function Feedback() {
         const headers = { "Content-Type": "application/json" };
         if (user && user.token) headers.Authorization = `Bearer ${user.token}`;
 
-        const res = await fetch(`http://localhost:5000/api/orders/${orderId}`, { headers });
+        const res = await fetch(`https://smart-ordering-system.onrender.com/api/orders/${orderId}`, { headers });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.message || `Failed to fetch order (${res.status})`);
@@ -63,7 +63,7 @@ export default function Feedback() {
 
         if (user && user.token) {
           try {
-            const chk = await fetch(`http://localhost:5000/api/feedback/check/${orderId}`, {
+            const chk = await fetch(`https://smart-ordering-system.onrender.com/api/feedback/check/${orderId}`, {
               headers: { Authorization: `Bearer ${user.token}`, "Content-Type": "application/json" },
             });
             if (chk.ok) {
@@ -107,7 +107,7 @@ export default function Feedback() {
     setSubmitting(true);
     try {
       if (user && user.token) {
-        const res = await fetch("http://localhost:5000/api/feedback", {
+        const res = await fetch("https://smart-ordering-system.onrender.com/api/feedback", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

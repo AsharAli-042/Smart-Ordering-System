@@ -31,7 +31,7 @@ function RespondBlock({ feedbackId, initialResponse = "" }) {
         } catch (e) {}
       }
 
-      const res = await fetch(`http://localhost:5000/api/admin/feedback/${feedbackId}/respond`, {
+      const res = await fetch(`https://smart-ordering-system.onrender.com/api/admin/feedback/${feedbackId}/respond`, {
         method: "POST",
         headers,
         body: JSON.stringify({ response: text.trim() }),
@@ -125,7 +125,7 @@ export default function AdminFeedback() {
         const headers = { "Content-Type": "application/json" };
         if (user && user.token) headers.Authorization = `Bearer ${user.token}`;
 
-        const res = await fetch("http://localhost:5000/api/admin/feedback", { headers });
+        const res = await fetch("https://smart-ordering-system.onrender.com/api/admin/feedback", { headers });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.message || `Error ${res.status}`);

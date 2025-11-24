@@ -92,7 +92,7 @@ export default function OrderPlaced() {
 
     if (user && user.token) {
       try {
-        const res = await fetch(`http://localhost:5000/api/feedback/check/${orderId}`, {
+        const res = await fetch(`https://smart-ordering-system.onrender.com/api/feedback/check/${orderId}`, {
           headers: { Authorization: `Bearer ${user.token}`, "Content-Type": "application/json" },
         });
         if (res.ok) {
@@ -120,7 +120,7 @@ export default function OrderPlaced() {
       const headers = { "Content-Type": "application/json" };
       if (user && user.token) headers.Authorization = `Bearer ${user.token}`;
 
-      const res = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+      const res = await fetch(`https://smart-ordering-system.onrender.com/api/orders/${orderId}`, {
         headers,
       });
 

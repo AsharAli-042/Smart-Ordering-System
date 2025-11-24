@@ -59,13 +59,13 @@ export default function AdminDashboard() {
 
         const [weeklyRes, peakRes, topRes] = await Promise.all([
           fetch(
-            "http://localhost:5000/api/admin/weekly-revenue?tz=Asia/Karachi",
+            "https://smart-ordering-system.onrender.com/api/admin/weekly-revenue?tz=Asia/Karachi",
             { headers }
           ),
-          fetch("http://localhost:5000/api/admin/peak-hours?tz=Asia/Karachi", {
+          fetch("https://smart-ordering-system.onrender.com/api/admin/peak-hours?tz=Asia/Karachi", {
             headers,
           }),
-          fetch("http://localhost:5000/api/admin/top-selling?tz=Asia/Karachi", {
+          fetch("https://smart-ordering-system.onrender.com/api/admin/top-selling?tz=Asia/Karachi", {
             headers,
           }),
         ]);

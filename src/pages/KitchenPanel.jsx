@@ -64,7 +64,7 @@ export default function KitchenPanel() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/kitchen/orders", {
+      const res = await fetch("https://smart-ordering-system.onrender.com/api/kitchen/orders", {
         headers,
       });
       if (!res.ok) {
@@ -110,7 +110,7 @@ export default function KitchenPanel() {
     );
 
     try {
-      const res = await fetch(`http://localhost:5000/api/kitchen/orders/${orderId}/status`, {
+      const res = await fetch(`https://smart-ordering-system.onrender.com/api/kitchen/orders/${orderId}/status`, {
         method: "PATCH",
         headers,
         body: JSON.stringify({ status: newStatus }),

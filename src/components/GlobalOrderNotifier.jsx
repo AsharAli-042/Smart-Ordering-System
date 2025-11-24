@@ -35,7 +35,7 @@ export default function GlobalOrderNotifier() {
       if (localStorage.getItem(`notifiedFor:${id}`)) return;
 
       try {
-        const res = await fetch(`http://localhost:5000/api/orders/${id}`, {
+        const res = await fetch(`https://smart-ordering-system.onrender.com/api/orders/${id}`, {
           headers: { "Content-Type": "application/json" },
         });
         if (!res.ok) return;

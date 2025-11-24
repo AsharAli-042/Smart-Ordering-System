@@ -63,7 +63,7 @@ export default function AdminNavbar() {
     // Call server logout endpoint if we have a token. If backend returns error, ignore it.
     if (token) {
       try {
-        await fetch("http://localhost:5000/api/auth/logout", {
+        await fetch("https://smart-ordering-system.onrender.com/api/auth/logout", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

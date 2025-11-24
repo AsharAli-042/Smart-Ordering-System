@@ -42,7 +42,7 @@ export default function RequireFeedback({ children }) {
     const check = async () => {
       try {
         // 1) fetch order
-        const r1 = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+        const r1 = await fetch(`https://smart-ordering-system.onrender.com/api/orders/${orderId}`, {
           headers: { Authorization: `Bearer ${user.token}`, "Content-Type": "application/json" },
         });
         if (!r1.ok) {
@@ -57,7 +57,7 @@ export default function RequireFeedback({ children }) {
           return;
         }
         // 2) check feedback existence
-        const r2 = await fetch(`http://localhost:5000/api/feedback/check/${orderId}`, {
+        const r2 = await fetch(`https://smart-ordering-system.onrender.com/api/feedback/check/${orderId}`, {
           headers: { Authorization: `Bearer ${user.token}`, "Content-Type": "application/json" },
         });
         if (!r2.ok) {
