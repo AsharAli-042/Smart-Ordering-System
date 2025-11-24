@@ -92,7 +92,7 @@ export default function Checkout() {
     };
 
     try {
-      const orderRes = await fetch("http://localhost:5000/api/orders", {
+      const orderRes = await fetch("https://smart-ordering-system.onrender.com/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -135,7 +135,7 @@ export default function Checkout() {
       clearCart();
       try {
         if (user && user.token) {
-          await fetch("http://localhost:5000/api/cart", {
+          await fetch("https://smart-ordering-system.onrender.com/api/cart", {
             method: "DELETE",
             headers: {
               "Content-Type": "application/json",
