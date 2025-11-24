@@ -45,7 +45,7 @@ function startOfDayInUTC(
 }
 
 const app = express();
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: "https://smart-ordering-system.onrender.com" }));
 app.use(bodyParser.json());
 
 const USERS_FILE = "./users.json";
