@@ -144,7 +144,7 @@ export default function AdminDashboard() {
         if (user && user.token)
           headers["Authorization"] = `Bearer ${user.token}`;
 
-        const res = await fetch("/api/admin/stats", { headers });
+        const res = await fetch("https://smart-ordering-system.onrender.com/api/admin/stats", { headers });
 
         if (!res.ok) {
           const errorBody = await res.json().catch(() => ({}));
