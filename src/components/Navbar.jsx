@@ -69,7 +69,7 @@ export default function Navbar() {
               />
               <div className="flex flex-col">
                 <span className="text-2xl font-bold bg-linear-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                  Smart Dine
+                  Smart Ordering
                 </span>
                 <span className="text-xs text-gray-500 font-medium -mt-1 hidden sm:block">
                   Order with Ease
