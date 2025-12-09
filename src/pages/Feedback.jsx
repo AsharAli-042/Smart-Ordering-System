@@ -179,24 +179,16 @@ export default function Feedback() {
             </div>
           ) : order ? (
             <>
-              {/* Order Info Section */}
+              {/* Order Status Banner */}
               <div className="bg-linear-to-r from-orange-50 to-red-50 p-6 border-b border-orange-100">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Order ID</p>
-                    <p className="text-xl font-bold text-gray-800">
-                      #{String(order._id || order.id || orderId).slice(-8).toUpperCase()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-4 py-2 rounded-full text-sm font-bold ${
-                      (order.status || "").toLowerCase() === "completed" || (order.status || "").toLowerCase() === "delivered"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}>
-                      {order.status}
-                    </span>
-                  </div>
+                <div className="flex justify-center">
+                  <span className={`px-6 py-3 rounded-full text-base font-bold shadow-sm ${
+                    (order.status || "").toLowerCase() === "completed" || (order.status || "").toLowerCase() === "delivered"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    Order {order.status}
+                  </span>
                 </div>
               </div>
 

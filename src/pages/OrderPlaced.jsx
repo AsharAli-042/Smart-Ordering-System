@@ -248,7 +248,7 @@ export default function OrderPlaced() {
   const isCompleted = lastOrder?.status === "completed" || lastOrder?.status === "delivered";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 via-amber-50 to-orange-100">
       <Navbar />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
@@ -256,11 +256,11 @@ export default function OrderPlaced() {
         {/* Success Header */}
         <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8 text-center border border-orange-100">
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center animate-bounce">
+            <div className="w-20 h-20 bg-linear-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center animate-bounce">
               <CheckCircle className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-3">
+          <h1 className="text-4xl font-bold bg-linear-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-3">
             Order Confirmed!
           </h1>
           <p className="text-gray-600 text-lg">
@@ -283,32 +283,22 @@ export default function OrderPlaced() {
             
             {/* Order Info Card */}
             <div className="bg-white rounded-3xl shadow-lg p-6 border border-orange-100">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl">
-                  <Package className="w-10 h-10 text-orange-600" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center gap-4 p-5 bg-linear-to-br from-blue-50 to-blue-100 rounded-xl">
+                  <Calendar className="w-12 h-12 text-blue-600 shrink-0" />
                   <div>
-                    <p className="text-xs text-gray-600 font-medium">Order ID</p>
-                    <p className="text-lg font-bold text-gray-800">
-                      #{String(lastOrder.orderId).slice(-8).toUpperCase()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-                  <Calendar className="w-10 h-10 text-blue-600" />
-                  <div>
-                    <p className="text-xs text-gray-600 font-medium">Placed At</p>
-                    <p className="text-sm font-bold text-gray-800">
+                    <p className="text-sm text-gray-600 font-medium mb-1">Placed At</p>
+                    <p className="text-base font-bold text-gray-800">
                       {fmt(lastOrder.placedAt)}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-                  <Users className="w-10 h-10 text-purple-600" />
+                <div className="flex items-center gap-4 p-5 bg-linear-to-br from-purple-50 to-purple-100 rounded-xl">
+                  <Users className="w-12 h-12 text-purple-600 shrink-0" />
                   <div>
-                    <p className="text-xs text-gray-600 font-medium">Table Number</p>
-                    <p className="text-2xl font-bold text-gray-800">
+                    <p className="text-sm text-gray-600 font-medium mb-1">Table Number</p>
+                    <p className="text-3xl font-bold text-gray-800">
                       {lastOrder.tableNumber ?? "—"}
                     </p>
                   </div>
@@ -332,12 +322,12 @@ export default function OrderPlaced() {
                   return (
                     <div key={step.key} className="relative">
                       <div className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
-                        current ? 'bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300' : 
+                        current ? 'bg-linear-to-r from-orange-50 to-red-50 border-2 border-orange-300' : 
                         done ? 'bg-green-50' : 'bg-gray-50'
                       }`}>
                         <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                           done 
-                            ? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg' 
+                            ? 'bg-linear-to-r from-green-500 to-green-600 shadow-lg' 
                             : 'bg-gray-200'
                         }`}>
                           <Icon className={`w-7 h-7 ${done ? 'text-white' : 'text-gray-400'}`} />
@@ -387,7 +377,7 @@ export default function OrderPlaced() {
                 {(lastOrder.items || []).map((it, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100 hover:shadow-md transition-shadow"
+                    className="flex items-center justify-between bg-linear-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center gap-4">
                       {it.image && (
@@ -426,7 +416,7 @@ export default function OrderPlaced() {
                   <span>Additional Charges</span>
                   <span className="font-semibold">₨ {lastOrder.additionalCharges ?? 0}</span>
                 </div>
-                <div className="flex justify-between bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl text-2xl font-bold shadow-lg">
+                <div className="flex justify-between bg-linear-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl text-2xl font-bold shadow-lg">
                   <span>Total Amount</span>
                   <span>₨ {lastOrder.total ?? 0}</span>
                 </div>
@@ -448,7 +438,7 @@ export default function OrderPlaced() {
                 disabled={!isCompleted}
                 className={`flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all ${
                   isCompleted
-                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 hover:shadow-xl"
+                    ? "bg-linear-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 hover:shadow-xl"
                     : "bg-gray-200 text-gray-500 cursor-not-allowed"
                 }`}
               >
@@ -460,7 +450,7 @@ export default function OrderPlaced() {
             {/* Info Banner */}
             {!isCompleted && (
               <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <Clock className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                 <div className="text-sm text-blue-800">
                   <p className="font-semibold mb-1">Your order is being prepared</p>
                   <p>We'll notify you when it's ready. The page updates automatically every 5 seconds.</p>
